@@ -42,6 +42,7 @@ Regras: componentes recebem só o que precisam (nunca repositório nem configura
 ## Deploy (Coolify)
 
 - Build pack: **Dockerfile**, porta **3000**, domínio `tempmail.mateussiil.com.br`.
-- Healthcheck: `GET /api/health` (200 com o banco no ar, 503 sem).
+- Healthcheck: `GET /api/health` (200 com o banco no ar, 503 sem). No Coolify, configure o **host do healthcheck como `127.0.0.1`**, não `localhost`: na imagem Alpine o `localhost` resolve primeiro para IPv6 e o Next escuta só em IPv4, então a checagem falha com "Connection refused" e o deploy é revertido. A imagem também não tem `curl`, só o `wget` do BusyBox.
+- Recursos no Coolify: projeto `tempmail` (ambiente `production`) com o app `tempmail` e o Postgres `tempmail-db`, no servidor `localhost` (o mesmo pra onde aponta o curinga `*.mateussiil.com.br`). A `DATABASE_URL` do app aponta pro host interno do banco.
 - Variáveis de ambiente: ver [`.env.example`](./.env.example). Segredos só no Coolify, nunca no repositório.
 - Não servir o app em `tmp.mateussiil.com.br`: esse nome é só do email (MX).
