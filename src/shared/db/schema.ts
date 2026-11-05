@@ -2,3 +2,4 @@
 // e este arquivo as reexporta; os tickets de funcionalidade vão preenchendo.
 export * from "./auth-schema";
 export * from "../../modules/inbox/infrastructure/schema";
+export * from "../../modules/message/infrastructure/schema";

@@ -36,6 +36,10 @@ _Avoid_: Fixar, permanente
 Um email recebido por uma Caixa.
 _Avoid_: Email (ambíguo com o endereço), mail
 
+**Código de verificação**:
+Sequência numérica de uma Mensagem usada para confirmar uma ação (cadastro, login), extraída do assunto ou do corpo.
+_Avoid_: OTP, token, senha
+
 **Email órfão**:
 Email que chega para um endereço sem Caixa ativa; é descartado.
 _Avoid_: Email perdido, não entregue

@@ -1,5 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { mailDomain, missingAuthEnv, positiveIntEnv } from "./env";
+import {
+  mailDomain,
+  maxMessageBytes,
+  missingAuthEnv,
+  missingReceivingEnv,
+  positiveIntEnv,
+  resendApiUrl,
+  webhookDebugEnabled,
+} from "./env";
+
+describe("variáveis do recebimento", () => {
+  const complete = {
+    RESEND_API_KEY: "re_x",
+    RESEND_WEBHOOK_SECRET: "whsec_x",
+    R2_ENDPOINT: "https://conta.r2.cloudflarestorage.com",
+    R2_ACCESS_KEY_ID: "id",
+    R2_SECRET_ACCESS_KEY: "segredo",
+    R2_BUCKET: "tempmail",
+  };
+
+  it("missingReceivingEnv aponta só os nomes que faltam ou estão vazios", () => {
+    expect(missingReceivingEnv(complete)).toEqual([]);
+    expect(missingReceivingEnv({ ...complete, RESEND_API_KEY: "", R2_BUCKET: undefined })).toEqual([
+      "RESEND_API_KEY",
+      "R2_BUCKET",
+    ]);
+    expect(missingReceivingEnv({})).toHaveLength(6);
+  });
+
+  it("resendApiUrl tem padrão e tira a barra do fim", () => {
+    expect(resendApiUrl({})).toBe("https://api.resend.com");
+    expect(resendApiUrl({ RESEND_API_URL: "http://127.0.0.1:9000/" })).toBe("http://127.0.0.1:9000");
+  });
+
+  it("maxMessageBytes usa 10 MB por padrão e aceita sobrescrever", () => {
+    expect(maxMessageBytes({})).toBe(10 * 1024 * 1024);
+    expect(maxMessageBytes({ MAX_MESSAGE_MB: "2" })).toBe(2 * 1024 * 1024);
+  });
+
+  it("webhookDebugEnabled só liga com 'true'", () => {
+    expect(webhookDebugEnabled({})).toBe(false);
+    expect(webhookDebugEnabled({ WEBHOOK_DEBUG_LOG: "1" })).toBe(false);
+    expect(webhookDebugEnabled({ WEBHOOK_DEBUG_LOG: " TRUE " })).toBe(true);
+  });
+});
 
 describe("positiveIntEnv", () => {
   it("usa o padrão quando a variável está ausente ou vazia", () => {

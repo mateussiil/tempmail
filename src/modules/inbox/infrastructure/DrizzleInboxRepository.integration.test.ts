@@ -1,11 +1,12 @@
 // @vitest-environment node
 // Roda contra um Postgres de verdade e só quando TEST_DATABASE_URL está definida
-// (o CI define; localmente: TEST_DATABASE_URL=postgres://... npm test). Apaga os
-// dados das tabelas de usuário e de Caixa, então use um banco só de testes.
+// (o CI define; localmente: TEST_DATABASE_URL=postgres://... npm test). Cria um
+// banco descartável só dele, então o banco da URL não é alterado.
 import path from "node:path";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createIsolatedDatabase } from "@/shared/db/isolatedDatabase";
 import { runMigrations } from "@/shared/db/migrate";
 import * as schema from "@/shared/db/schema";
 import { InboxAddressConflictError } from "../application/InboxRepository";
@@ -20,17 +21,20 @@ const inbox = (id: string, address: string, ownerId: string, expiresAt: Date | n
   new Inbox(id, address, ownerId, expiresAt, createdAt);
 
 describe.skipIf(!url)("DrizzleInboxRepository (Postgres real)", () => {
+  let isolated: Awaited<ReturnType<typeof createIsolatedDatabase>>;
   let pool: Pool;
   let repository: DrizzleInboxRepository;
 
   beforeAll(async () => {
-    pool = new Pool({ connectionString: url });
+    isolated = await createIsolatedDatabase(url!);
+    pool = new Pool({ connectionString: isolated.url });
     await runMigrations(pool, path.join(process.cwd(), "drizzle"));
     repository = new DrizzleInboxRepository(drizzle(pool, { schema }));
   });
 
   afterAll(async () => {
     await pool?.end();
+    await isolated?.drop();
   });
 
   beforeEach(async () => {

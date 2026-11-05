@@ -43,6 +43,35 @@ export function mailDomain(env: Record<string, string | undefined> = process.env
   return (env.MAIL_DOMAIN?.trim() || "tmp.mateussiil.com.br").toLowerCase();
 }
 
+const RECEIVING_ENV_VARS = [
+  "RESEND_API_KEY",
+  "RESEND_WEBHOOK_SECRET",
+  "R2_ENDPOINT",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET",
+] as const;
+
+/** Nomes (nunca valores) das variáveis do recebimento que estão ausentes ou vazias. */
+export function missingReceivingEnv(env: Record<string, string | undefined> = process.env): string[] {
+  return RECEIVING_ENV_VARS.filter((name) => !env[name]);
+}
+
+/** Raiz da API do Resend; só se sobrescreve em testes. */
+export function resendApiUrl(env: Record<string, string | undefined> = process.env): string {
+  return (env.RESEND_API_URL?.trim() || "https://api.resend.com").replace(/\/+$/, "");
+}
+
+/** Tamanho máximo de uma Mensagem em bytes (`MAX_MESSAGE_MB`, 10 por padrão). */
+export function maxMessageBytes(env: Record<string, string | undefined> = process.env): number {
+  return positiveIntEnv("MAX_MESSAGE_MB", 10, env) * 1024 * 1024;
+}
+
+/** Com `WEBHOOK_DEBUG_LOG=true`, o webhook registra o conteúdo recebido (só para emails de teste). */
+export function webhookDebugEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.WEBHOOK_DEBUG_LOG?.trim().toLowerCase() === "true";
+}
+
 const AUTH_ENV_VARS = [
   "BETTER_AUTH_URL",
   "BETTER_AUTH_SECRET",
