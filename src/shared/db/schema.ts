@@ -3,3 +3,4 @@
 export * from "./auth-schema";
 export * from "../../modules/inbox/infrastructure/schema";
 export * from "../../modules/message/infrastructure/schema";
+export * from "../../modules/membership/infrastructure/schema";

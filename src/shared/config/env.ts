@@ -43,6 +43,11 @@ export function mailDomain(env: Record<string, string | undefined> = process.env
   return (env.MAIL_DOMAIN?.trim() || "tmp.mateussiil.com.br").toLowerCase();
 }
 
+/** Pedidos por minuto por Chave de API (`API_RATE_LIMIT_PER_MINUTE`, 60). */
+export function apiRateLimitPerMinute(env: Record<string, string | undefined> = process.env): number {
+  return positiveIntEnv("API_RATE_LIMIT_PER_MINUTE", 60, env);
+}
+
 const RECEIVING_ENV_VARS = [
   "RESEND_API_KEY",
   "RESEND_WEBHOOK_SECRET",
