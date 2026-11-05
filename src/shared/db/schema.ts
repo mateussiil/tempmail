@@ -1,3 +1,4 @@
 // Ponto único de entrada do schema do Drizzle. Cada módulo define suas tabelas
 // e este arquivo as reexporta; os tickets de funcionalidade vão preenchendo.
 export * from "./auth-schema";
+export * from "../../modules/inbox/infrastructure/schema";

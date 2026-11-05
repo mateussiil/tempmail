@@ -37,7 +37,7 @@ src/
     └── testing/         # repositórios falsos e fixtures
 ```
 
-Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. O módulo `membership` (login e lista de autorizados) mostra as quatro camadas; `health` só tem as três primeiras.
+Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados) e `inbox` (Caixas) mostram as quatro camadas; `health` só tem as três primeiras. As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
 
 ## Login e lista de autorizados
 
@@ -55,6 +55,33 @@ Login com GitHub pelo [Better Auth](https://www.better-auth.com), sem senha e se
 - A rota de edição de perfil do Better Auth (`/update-user`) está desligada, e um hook recusa qualquer mudança em `githubUsername`: ninguém troca o próprio username por um que esteja na lista.
 
 **Schema de autenticação:** gerado pelo CLI do Better Auth (veja `auth.cli.ts`), e as migrations do Drizzle vêm dele. O índice único de `github_username` é manual em `src/shared/db/auth-schema.ts`: ao regenerar o arquivo, recoloque-o.
+
+## Caixas
+
+Uma **Caixa** é um endereço `<nome>@tmp.mateussiil.com.br` criado explicitamente por um Membro (os termos estão em [`CONTEXT.md`](./CONTEXT.md)). Módulo `inbox`.
+
+**Regras**
+- **Criação explícita.** Nome escolhido (3 a 40 caracteres: letras, números, ponto e hífen, sem separador no começo, no fim ou repetido; guardado em minúsculas) ou aleatório (8 caracteres, como `k7f3qx9m`).
+- **O endereço é do primeiro Dono pra sempre**, mesmo depois de expirar. Criar um endereço seu que expirou **reativa** a mesma Caixa, vazia. Endereço de outro Membro é recusado.
+- **Prazo** de 24 h (`INBOX_TTL_HOURS`). **Manter** tira o prazo; **Apagar** expira agora (inclusive uma mantida); **Reativar** devolve a Caixa com novo prazo, ou já mantida.
+- **Limite** de 20 Caixas ativas por Membro, contando as mantidas (`MAX_ACTIVE_INBOXES_PER_MEMBER`). Apagar ou expirar libera vaga.
+- A Caixa de outro Membro e uma inexistente respondem igual (`404`).
+- O estado "expirada" é calculado pelo prazo na hora da leitura. Apagar as Mensagens e os arquivos do R2 de uma Caixa expirada é trabalho do ticket de expiração.
+
+**API** (autenticada pela sessão do navegador; as chaves de API entram no ticket das chaves):
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/inboxes` | Lista as suas Caixas: ativas primeiro, as mais novas antes. |
+| `POST /api/inboxes` | Cria. Corpo opcional `{"address": "meu-nome"}`; sem ele, endereço aleatório. Responde `201`, ou `200` com `reactivated: true` se reativou. |
+| `PATCH /api/inboxes/{id}` | `{"kept": true}` mantém, `{"kept": false}` deixa de manter. |
+| `DELETE /api/inboxes/{id}` | Apaga (expira agora). Repetir não faz mal. |
+| `POST /api/inboxes/{id}/reactivate` | Reativa uma Caixa expirada. Corpo opcional `{"keep": true}`. |
+| `GET /api/inboxes/availability?address=…` | Diz o que aconteceria ao criar: `free`, `yours_expired`, `yours_active`, `taken` ou `invalid` (com `problem`). |
+
+Erros vêm como `{"error": "<código>", "message": "<texto em português>"}`: `400` (`invalid_address`, `invalid_body`), `401` (sem sessão), `403` (`access_ended`), `404` (`not_found`), `409` (`address_taken`, `already_active`, `limit_reached` com `max`, `not_active`, `not_expired`), `415` e `503` (login não configurado). Com corpo, o `Content-Type` precisa ser `application/json`.
+
+**Testes de integração.** `TEST_DATABASE_URL=postgres://... npm test` roda também os testes do repositório contra um Postgres de verdade. Eles **apagam os dados** das tabelas de usuário e de Caixa, então use um banco só de testes. Sem a variável, são pulados. O CI sobe um Postgres e define a variável.
 
 ## Deploy (Coolify)
 
