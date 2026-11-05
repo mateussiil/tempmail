@@ -83,6 +83,26 @@ Erros vêm como `{"error": "<código>", "message": "<texto em português>"}`: `4
 
 **Testes de integração.** `TEST_DATABASE_URL=postgres://... npm test` roda também os testes contra um Postgres de verdade. Cada arquivo de teste **cria o próprio banco descartável** (e o apaga no fim), então rodam em paralelo e o banco da URL não é alterado. O usuário precisa poder criar bancos. Sem a variável, esses testes são pulados. O CI sobe um Postgres e define a variável.
 
+## Chaves de API
+
+Para usar a API fora do navegador (scripts, agentes, e depois o MCP), cada Membro cria **Chaves de API** com nome. O segredo (`tm_…`) aparece **uma vez só**, na criação; o banco guarda só o hash e o prefixo. A chave não expira nem tem escopo: vale até ser revogada, e tem os mesmos poderes do Membro.
+
+| Rota | O que faz |
+| --- | --- |
+| `POST /api/keys` | Cria. Corpo `{"name": "meu-script"}` (1 a 60 caracteres). A resposta traz `token`. |
+| `GET /api/keys` | Lista as suas chaves (prefixo, último uso, revogada), sem o segredo. |
+| `DELETE /api/keys/{id}` | Revoga; deixa de valer no pedido seguinte. Repetir não faz mal. |
+
+Essas três rotas só aceitam a **sessão do navegador** (uma chave vazada não gera outras). Todas as outras rotas aceitam a chave, em `Authorization: Bearer tm_…` ou `X-API-Key: tm_…`:
+
+```bash
+curl -H "Authorization: Bearer $TEMPMAIL_KEY" https://tempmail.mateussiil.com.br/api/inboxes
+```
+
+- A lista `ALLOWED_GITHUB_USERS` é conferida a **cada pedido**: tirar um username dela corta as chaves dele na hora.
+- Se vier uma chave, só ela vale: chave inválida ou revogada dá `401` (`invalid_api_key`), sem cair para a sessão.
+- **Limite:** 60 pedidos por minuto por chave (`API_RATE_LIMIT_PER_MINUTE`). Passou, `429` com `Retry-After` em segundos. A contagem fica na memória do processo, o que vale com uma instância só (o caso do Coolify).
+
 ## Recebimento de emails
 
 O caminho de um email: o MX de `tmp.mateussiil.com.br` entrega ao **Resend** → o Resend chama `POST /api/webhooks/resend` (assinado) → o app busca o email na API do Resend e baixa o `.eml` na hora (o link expira em cerca de 1 h) → grava o `.eml` no **R2** (`caixas/<id-da-caixa>/<id-da-mensagem>.eml`) e os campos prontos no Postgres (tabela `message`) → avisa com `NOTIFY inbox_message` (o `wait_for_email` do MCP escuta esse canal). Módulo `message`.
