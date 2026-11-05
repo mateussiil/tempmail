@@ -6,10 +6,12 @@ import type {
   FetchEmailError,
   InboxDirectory,
   MessageRepository,
+  NewMessageSignal,
   RawDownload,
   RawEmailDownloader,
   RawEmailStore,
   ReceivedEmailSource,
+  Unsubscribe,
 } from "../application/ports";
 
 export class FakeMessageRepository implements MessageRepository {
@@ -35,8 +37,40 @@ export class FakeMessageRepository implements MessageRepository {
       .slice(0, limit);
   }
 
+  async listCreatedAfter(inboxId: string, after: Date, limit: number): Promise<Message[]> {
+    return [...this.messages.values()]
+      .filter((m) => m.inboxId === inboxId && m.createdAt.getTime() > after.getTime())
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, limit);
+  }
+
   async findById(id: string): Promise<Message | null> {
     return this.messages.get(id) ?? null;
+  }
+}
+
+/** Sinal em memória: `emit` faz o papel do NOTIFY do Postgres. */
+export class FakeNewMessageSignal implements NewMessageSignal {
+  private readonly listeners = new Map<string, Set<() => void>>();
+  /** Quantas escutas estão abertas, pra conferir que ninguém esquece de fechar. */
+  get active(): number {
+    return [...this.listeners.values()].reduce((sum, set) => sum + set.size, 0);
+  }
+  /** Chamado depois de cada `subscribe`, pra simular algo chegando nesse instante. */
+  afterSubscribe: () => Promise<void> = async () => {};
+
+  async subscribe(inboxId: string, onMessage: () => void): Promise<Unsubscribe> {
+    const set = this.listeners.get(inboxId) ?? new Set();
+    set.add(onMessage);
+    this.listeners.set(inboxId, set);
+    await this.afterSubscribe();
+    return async () => {
+      set.delete(onMessage);
+    };
+  }
+
+  emit(inboxId: string): void {
+    for (const listener of this.listeners.get(inboxId) ?? []) listener();
   }
 }
 

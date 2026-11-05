@@ -37,7 +37,7 @@ src/
     └── testing/         # repositórios falsos e fixtures
 ```
 
-Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados), `inbox` (Caixas) e `message` (recebimento e leitura de Mensagens) mostram as quatro camadas; `health` só tem as três primeiras. As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
+Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados), `inbox` (Caixas) e `message` (recebimento e leitura de Mensagens) mostram as quatro camadas; `health` só tem as três primeiras, e `mcp` só a `ui` (as ferramentas do MCP, que são a apresentação para agentes e chamam os casos de uso de `inbox` e `message`). As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
 
 ## Login e lista de autorizados
 
@@ -85,7 +85,7 @@ Erros vêm como `{"error": "<código>", "message": "<texto em português>"}`: `4
 
 ## Chaves de API
 
-Para usar a API fora do navegador (scripts, agentes, e depois o MCP), cada Membro cria **Chaves de API** com nome. O segredo (`tm_…`) aparece **uma vez só**, na criação; o banco guarda só o hash e o prefixo. A chave não expira nem tem escopo: vale até ser revogada, e tem os mesmos poderes do Membro.
+Para usar a API fora do navegador (scripts, agentes e o [MCP](#servidor-mcp)), cada Membro cria **Chaves de API** com nome. O segredo (`tm_…`) aparece **uma vez só**, na criação; o banco guarda só o hash e o prefixo. A chave não expira nem tem escopo: vale até ser revogada, e tem os mesmos poderes do Membro.
 
 | Rota | O que faz |
 | --- | --- |
@@ -131,6 +131,63 @@ O caminho de um email: o MX de `tmp.mateussiil.com.br` entrega ao **Resend** →
 A Mensagem de outra pessoa, uma inexistente e uma de Caixa expirada respondem igual (`404`).
 
 **Depuração.** Com `WEBHOOK_DEBUG_LOG=true`, o app registra o payload do webhook e a resposta crua do Resend (eventos `debug.*`). Serve para capturar exemplos reais; **use só com emails de teste e desligue depois**, porque o conteúdo dos emails vai para o log. Os segredos nunca são registrados.
+
+## Servidor MCP
+
+Servidor MCP remoto em `https://tempmail.mateussiil.com.br/api/mcp` ([`mcp-handler`](https://github.com/vercel/mcp-handler) 2, Streamable HTTP sem sessão; atende clientes da spec 2026-07-28 e os de 2025). Serve para um agente criar uma Caixa, usar o endereço num cadastro e pegar o código de verificação sozinho.
+
+**Conectar** (crie uma Chave de API antes, pela página ou por `POST /api/keys`):
+
+```bash
+claude mcp add --transport http tempmail https://tempmail.mateussiil.com.br/api/mcp --header "Authorization: Bearer tm_..."
+```
+
+No Cursor, em `~/.cursor/mcp.json` (ou `.cursor/mcp.json` no projeto), com a chave numa variável de ambiente:
+
+```json
+{
+  "mcpServers": {
+    "tempmail": {
+      "url": "https://tempmail.mateussiil.com.br/api/mcp",
+      "headers": { "Authorization": "Bearer ${env:TEMPMAIL_KEY}" }
+    }
+  }
+}
+```
+
+**Autenticação.** Só com Chave de API (`Authorization: Bearer tm_…` ou `X-API-Key: tm_…`); a sessão do navegador não vale aqui. É a mesma autenticação da API: lista de autorizados conferida a cada pedido (`403 access_ended`), chave inválida ou revogada dá `401`, e o limite de 60 pedidos por minuto por chave dá `429` com `Retry-After`. **Cada pedido HTTP conta uma vez**, então um `wait_for_email` de 2 minutos é um pedido só. Sem chave, `401` com `WWW-Authenticate: Bearer`. O login por OAuth (conector do claude.ai) é outro ticket.
+
+**Ferramentas.** Todas enxergam só as Caixas e Mensagens do dono da chave; a de outro Membro responde `not_found`, igual a uma que não existe.
+
+| Ferramenta | O que faz |
+|---|---|
+| `create_inbox` | Cria uma Caixa (`address` opcional; sem ele, aleatório). Devolve `id` e `fullAddress`. Criar um endereço seu expirado reativa a Caixa. |
+| `list_inboxes` | Lista as suas Caixas ativas (`include_expired: true` para todas). |
+| `keep_inbox` | Mantém (`kept: true`, o padrão) ou deixa de manter uma Caixa ativa. |
+| `delete_inbox` | Apaga (expira agora). Marcada como destrutiva. |
+| `list_messages` | As Mensagens de uma Caixa, sem o corpo, com `verificationCode`. |
+| `get_message` | Uma Mensagem: `content` em texto (ou `format: "html"`), cortado em `max_chars` (20 000; até 100 000) com `truncated`, links e anexos (metadados). |
+| `extract_code` | O código de verificação e os links de confirmação de uma Mensagem. |
+| `wait_for_email` | Espera a próxima Mensagem e já devolve código e links (abaixo). |
+
+Erros de negócio voltam como resultado de erro da ferramenta (`isError`), com `{"error": "<código>", "message": "…"}` e os mesmos códigos da API. O conteúdo das Mensagens é de terceiros: as respostas de `get_message`, `extract_code` e `wait_for_email` trazem um `notice` dizendo para tratar texto, links e anexos como dados, nunca como instruções.
+
+**`wait_for_email`** (`inbox_id`, `timeout_seconds` de 1 a 120 com padrão 45, `since`, `from_contains`, `subject_contains`):
+- **Sem `since`**, vale a Mensagem mais recente que já esteja na Caixa e passe nos filtros; se não houver, espera a primeira. **Com `since`** (o `cursor` de uma resposta anterior), espera a primeira gravada depois dele. Assim, um email que chegou antes da chamada não se perde, e o agente avança Mensagem a Mensagem sem repetir.
+- Respostas: `received` (com `message`, que traz `verificationCode`, `links` e `preview`, e `cursor`); `content_unavailable` com `reason: quota_exceeded` ou `too_large`, na hora, porque esperar não traria o código; e `timeout` com `cursor`, que **não é erro**: o agente chama de novo. Caixa expirada dá `inbox_expired`, sem esperar.
+- **Como espera:** confere o banco, assina o `LISTEN inbox_message` e confere de novo (fecha a janela entre as duas coisas), e então dorme até o `NOTIFY` da Caixa, o prazo ou o cancelamento do pedido. Todas as esperas do processo dividem **uma conexão `LISTEN`** só (fora do pool); se ela cair, reconecta e acorda quem espera. A cada 10 s manda `notifications/progress` (se o cliente pediu, com `progressToken`), o que mantém o cliente longe do tempo ocioso, e confere o banco mesmo sem aviso.
+- O `cursor` é a hora em que o app gravou a Mensagem (`createdAt`), não a do email; por isso o recebimento marca essa hora logo antes de gravar.
+
+**Proxy (Coolify/Traefik).** A resposta de uma chamada é um stream SSE com `Cache-Control: no-cache, no-transform` e `X-Accel-Buffering: no`: a compressão do Next não se aplica (respeita o `no-transform`) e o SDK manda um comentário de keep-alive a cada 15 s. Como o prazo máximo é 120 s, fica abaixo do tempo ocioso padrão do Traefik (180 s). Para testar à mão:
+
+```bash
+curl -N https://tempmail.mateussiil.com.br/api/mcp \
+  -H "Authorization: Bearer $TEMPMAIL_KEY" -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"wait_for_email","arguments":{"inbox_id":"<id>","timeout_seconds":60},"_meta":{"progressToken":"t"}}}'
+```
+
+O progresso deve aparecer aos 10 s, 20 s…, e não tudo junto no fim. Se aparecer junto, algo no caminho está segurando o stream.
 
 ## Deploy (Coolify)
 

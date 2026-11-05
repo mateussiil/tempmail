@@ -65,6 +65,11 @@ export interface MessageRepository {
   existingIds(ids: string[]): Promise<Set<string>>;
   /** As mais recentes primeiro. */
   listByInbox(inboxId: string, limit: number): Promise<Message[]>;
+  /**
+   * As gravadas depois de `after` (pelo `createdAt`, a hora em que o app gravou),
+   * na ordem de chegada: a mais antiga primeiro.
+   */
+  listCreatedAfter(inboxId: string, after: Date, limit: number): Promise<Message[]>;
   findById(id: string): Promise<Message | null>;
 }
 
@@ -76,4 +81,20 @@ export interface InboxDirectory {
   findByAddresses(addresses: string[]): Promise<DirectoryInbox[]>;
   /** A Caixa só existe para quem a consulta se for dele. */
   findOwned(ownerId: string, inboxId: string): Promise<DirectoryInbox | null>;
+}
+
+/** Para de escutar. Repetir não faz mal. */
+export type Unsubscribe = () => Promise<void>;
+
+/**
+ * Avisa quando uma Mensagem nova é gravada numa Caixa (o `NOTIFY inbox_message`
+ * do recebimento). O aviso só diz "chegou algo": quem escuta consulta o banco.
+ */
+export interface NewMessageSignal {
+  /**
+   * Resolve só quando já está escutando, então uma consulta feita depois não
+   * perde nada. `onMessage` também é chamado se a escuta cair e voltar, pra
+   * quem escuta conferir o banco de novo.
+   */
+  subscribe(inboxId: string, onMessage: () => void): Promise<Unsubscribe>;
 }
