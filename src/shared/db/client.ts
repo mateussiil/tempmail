@@ -1,5 +1,7 @@
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { databaseUrl } from "@/shared/config/env";
+import * as schema from "./schema";
 
 const globalForPool = globalThis as unknown as { __tempmailPool?: Pool };
 
@@ -14,3 +16,10 @@ export function getPool(): Pool {
   }
   return globalForPool.__tempmailPool;
 }
+
+/** Acesso tipado às tabelas, sobre o pool único. */
+export function getDb() {
+  return drizzle(getPool(), { schema });
+}
+
+export type Db = ReturnType<typeof getDb>;
