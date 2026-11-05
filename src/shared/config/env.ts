@@ -62,6 +62,13 @@ export function missingReceivingEnv(env: Record<string, string | undefined> = pr
   return RECEIVING_ENV_VARS.filter((name) => !env[name]);
 }
 
+const R2_ENV_VARS = ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"] as const;
+
+/** Nomes (nunca valores) das variáveis do R2 que estão ausentes ou vazias. */
+export function missingR2Env(env: Record<string, string | undefined> = process.env): string[] {
+  return R2_ENV_VARS.filter((name) => !env[name]);
+}
+
 /** Raiz da API do Resend; só se sobrescreve em testes. */
 export function resendApiUrl(env: Record<string, string | undefined> = process.env): string {
   return (env.RESEND_API_URL?.trim() || "https://api.resend.com").replace(/\/+$/, "");

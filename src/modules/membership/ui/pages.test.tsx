@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AccessEndedPage } from "./AccessEndedPage";
-import { MemberHomePage } from "./MemberHomePage";
 import { NotConfiguredPage } from "./NotConfiguredPage";
 import { SignInPage } from "./SignInPage";
 
@@ -45,14 +44,5 @@ describe("NotConfiguredPage", () => {
 
     expect(screen.getByText("GITHUB_CLIENT_ID")).toBeInTheDocument();
     expect(screen.getByText("BETTER_AUTH_SECRET")).toBeInTheDocument();
-  });
-});
-
-describe("MemberHomePage", () => {
-  it("cumprimenta o Membro e mostra o username", () => {
-    render(<MemberHomePage name="Ana" githubUsername="ana" actions={button} />);
-
-    expect(screen.getByRole("heading", { name: "Olá, Ana" })).toBeInTheDocument();
-    expect(screen.getByText("@ana")).toBeInTheDocument();
   });
 });

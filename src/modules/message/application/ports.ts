@@ -98,3 +98,22 @@ export interface NewMessageSignal {
    */
   subscribe(inboxId: string, onMessage: () => void): Promise<Unsubscribe>;
 }
+
+/** Lê o `.eml` guardado. `null` se o objeto não existe mais. */
+export interface RawEmailReader {
+  get(key: string): Promise<Uint8Array | null>;
+}
+
+export type EmailHeader = { name: string; value: string };
+
+export type EmailAttachment = {
+  filename: string | null;
+  contentType: string;
+  size: number;
+  content: Uint8Array;
+};
+
+/** Abre o `.eml` (MIME) para mostrar os cabeçalhos e extrair os anexos. */
+export interface EmailParser {
+  parse(raw: Uint8Array): Promise<{ headers: EmailHeader[]; attachments: EmailAttachment[] }>;
+}

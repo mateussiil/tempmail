@@ -86,4 +86,23 @@ describe("S3RawEmailStore", () => {
 
     await expect(down.put("k", new Uint8Array([1]), "message/rfc822")).rejects.toBeInstanceOf(TransientError);
   });
+
+  it("lê o .eml guardado", async () => {
+    stub = await startStubServer(() => ({ status: 200, headers: { "content-type": "message/rfc822" }, body: "From: a@b.test\r\n\r\noi" }));
+
+    const bytes = await store(stub.url).get("caixas/i/m.eml");
+
+    expect(pathOf(stub.requests[0].url)).toBe("/tempmail/caixas/i/m.eml");
+    expect(new TextDecoder().decode(bytes!)).toBe("From: a@b.test\r\n\r\noi");
+  });
+
+  it("objeto que não existe mais (404) dá null", async () => {
+    stub = await startStubServer(() => ({
+      status: 404,
+      headers: { "content-type": "application/xml" },
+      body: "<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message></Error>",
+    }));
+
+    expect(await store(stub.url).get("caixas/i/sumiu.eml")).toBeNull();
+  });
 });

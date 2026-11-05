@@ -2,13 +2,17 @@ import { fail, ok, type Result } from "@/shared/result";
 import type { Message } from "../domain/Message";
 import type {
   DirectoryInbox,
+  EmailAttachment,
   EmailContent,
+  EmailHeader,
+  EmailParser,
   FetchEmailError,
   InboxDirectory,
   MessageRepository,
   NewMessageSignal,
   RawDownload,
   RawEmailDownloader,
+  RawEmailReader,
   RawEmailStore,
   ReceivedEmailSource,
   Unsubscribe,
@@ -122,6 +126,25 @@ export class FakeRawEmailStore implements RawEmailStore {
   async put(key: string, bytes: Uint8Array): Promise<void> {
     if (this.failOn(key)) throw new Error(`R2 indisponível para ${key}`);
     this.objects.set(key, bytes);
+  }
+}
+
+/** O `.eml` guardado, por chave. */
+export class FakeRawEmailReader implements RawEmailReader {
+  readonly objects = new Map<string, Uint8Array>();
+
+  async get(key: string): Promise<Uint8Array | null> {
+    return this.objects.get(key) ?? null;
+  }
+}
+
+/** Devolve o que o teste mandar, sem abrir MIME de verdade. */
+export class FakeEmailParser implements EmailParser {
+  headers: EmailHeader[] = [{ name: "Subject", value: "oi" }];
+  attachments: EmailAttachment[] = [];
+
+  async parse(): Promise<{ headers: EmailHeader[]; attachments: EmailAttachment[] }> {
+    return { headers: this.headers, attachments: this.attachments };
   }
 }
 
