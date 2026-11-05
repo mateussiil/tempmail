@@ -37,7 +37,7 @@ src/
     └── testing/         # repositórios falsos e fixtures
 ```
 
-Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados) e `inbox` (Caixas) mostram as quatro camadas; `health` só tem as três primeiras. As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
+Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados), `inbox` (Caixas) e `message` (recebimento e leitura de Mensagens) mostram as quatro camadas; `health` só tem as três primeiras. As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
 
 ## Login e lista de autorizados
 
@@ -81,7 +81,36 @@ Uma **Caixa** é um endereço `<nome>@tmp.mateussiil.com.br` criado explicitamen
 
 Erros vêm como `{"error": "<código>", "message": "<texto em português>"}`: `400` (`invalid_address`, `invalid_body`), `401` (sem sessão), `403` (`access_ended`), `404` (`not_found`), `409` (`address_taken`, `already_active`, `limit_reached` com `max`, `not_active`, `not_expired`), `415` e `503` (login não configurado). Com corpo, o `Content-Type` precisa ser `application/json`.
 
-**Testes de integração.** `TEST_DATABASE_URL=postgres://... npm test` roda também os testes do repositório contra um Postgres de verdade. Eles **apagam os dados** das tabelas de usuário e de Caixa, então use um banco só de testes. Sem a variável, são pulados. O CI sobe um Postgres e define a variável.
+**Testes de integração.** `TEST_DATABASE_URL=postgres://... npm test` roda também os testes contra um Postgres de verdade. Cada arquivo de teste **cria o próprio banco descartável** (e o apaga no fim), então rodam em paralelo e o banco da URL não é alterado. O usuário precisa poder criar bancos. Sem a variável, esses testes são pulados. O CI sobe um Postgres e define a variável.
+
+## Recebimento de emails
+
+O caminho de um email: o MX de `tmp.mateussiil.com.br` entrega ao **Resend** → o Resend chama `POST /api/webhooks/resend` (assinado) → o app busca o email na API do Resend e baixa o `.eml` na hora (o link expira em cerca de 1 h) → grava o `.eml` no **R2** (`caixas/<id-da-caixa>/<id-da-mensagem>.eml`) e os campos prontos no Postgres (tabela `message`) → avisa com `NOTIFY inbox_message` (o `wait_for_email` do MCP escuta esse canal). Módulo `message`.
+
+**Configurar (uma vez):**
+1. **`RESEND_API_KEY`:** uma chave do Resend com **acesso total**. Chave só de envio é recusada pela API de emails recebidos (`restricted_api_key`). A conta é compartilhada com os outros domínios, então crie uma chave só pro tempmail (nome `tempmail`) para poder revogá-la sem afetar o resto, e deixe-a só no Coolify.
+2. **`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET`:** as credenciais do bucket `tempmail`.
+3. Faça o deploy. **Depois** crie o webhook no painel do Resend (Webhooks → Add Webhook): URL `https://tempmail.mateussiil.com.br/api/webhooks/resend`, evento `email.received`. Copie o **Signing Secret** dele para `RESEND_WEBHOOK_SECRET` e faça novo deploy. Enquanto faltar alguma variável, a rota responde `503 receiving_not_configured`, listando só os nomes que faltam (o Resend reenvia depois).
+
+**Como funciona:**
+- **A assinatura** (Svix: `svix-id`, `svix-timestamp`, `svix-signature`) é conferida sobre o **corpo bruto**, com tolerância de 5 minutos, antes de qualquer outra coisa. Assinatura inválida, ausente ou velha recebe `400`.
+- **Destinatários:** usa `received_for` (o destinatário do envelope SMTP) e, se vier vazio, `to`, `cc` e `bcc`, só os do `MAIL_DOMAIN`. A documentação do Resend não explica o que cada campo traz num catch-all, então confira com os payloads reais (veja a depuração abaixo). Sem Caixa ativa, o email é um **Email órfão**: descartado com `200`, só com um registro no log, sem tocar na cota nem no R2.
+- **Idempotente:** o id da Mensagem vem do email e da Caixa, então reenviar o aviso não duplica (`outcome: duplicate`) e uma nova tentativa sobrescreve o mesmo arquivo no R2. O Resend reenvia por cerca de 40 h.
+- **Falhas passageiras** (Resend com 429 ou 5xx, link do `.eml`, R2, banco) e **de configuração** (chave sem permissão, credencial do R2 recusada) respondem `503` sem gravar nada, pro Resend reenviar. O motivo fica no log (`webhook.failed`).
+- **Cota do Resend estourada** (`email_above_quota`): o conteúdo se perdeu no Resend, então a Mensagem é gravada só com o que o aviso trouxe (remetente, assunto, anexos) e `status: quota_exceeded`. **Acima de `MAX_MESSAGE_MB`** (10) fica `too_large`, só com os metadados.
+- **O código de verificação** (4 a 8 dígitos perto de "código", "code", "verification"…) é extraído do assunto ou do corpo por heurística; sem palavra de contexto, não adivinha.
+- **O corpo `html` é de terceiros.** Quem exibir precisa isolá-lo (iframe com `sandbox`).
+
+**API de leitura** (sessão do navegador, como a das Caixas):
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/inboxes/{id}/messages?limit=` | As Mensagens da Caixa, as mais recentes primeiro, sem o corpo (`limit` de 1 a 100, 50 por padrão). Uma Caixa expirada não tem Mensagens. |
+| `GET /api/messages/{id}` | A Mensagem completa: `text`, `html`, `verificationCode`, `attachments` (metadados) e `hasRaw`. |
+
+A Mensagem de outra pessoa, uma inexistente e uma de Caixa expirada respondem igual (`404`).
+
+**Depuração.** Com `WEBHOOK_DEBUG_LOG=true`, o app registra o payload do webhook e a resposta crua do Resend (eventos `debug.*`). Serve para capturar exemplos reais; **use só com emails de teste e desligue depois**, porque o conteúdo dos emails vai para o log. Os segredos nunca são registrados.
 
 ## Deploy (Coolify)
 
