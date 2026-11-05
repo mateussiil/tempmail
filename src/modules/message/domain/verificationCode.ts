@@ -28,7 +28,7 @@ function normalize(code: string): string {
 
 function standaloneCode(text: string): string | null {
   for (const line of text.split("\n")) {
-    const match = STANDALONE_LINE.exec(line.trim());
+    const match = STANDALONE_LINE.exec(line.trim().replace(/^[*_`]+|[*_`]+$/g, ""));
     if (match) return normalize(match[1]);
   }
   return null;

@@ -92,4 +92,11 @@ describe("extractVerificationCode", () => {
       expect(extract("Código 111111", "Use o código 222222")).toBe("111111");
     });
   });
+
+  describe("formato real dos emails de teste (Gmail, texto com *negrito*)", () => {
+    it("acha o código entre asteriscos", () => {
+      expect(extract("teste texto puro 2", "Seu código de verificação é *771204*.")).toBe("771204");
+      expect(extract("Confirme", "Use o código\n\n*482913*\n\npara entrar.")).toBe("482913");
+    });
+  });
 });
