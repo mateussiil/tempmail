@@ -27,7 +27,7 @@ export function debugLog(label: string, data: Record<string, unknown>): void {
   if (webhookDebugEnabled()) logEvent(`debug.${label}`, data);
 }
 
-function directory() {
+export function inboxDirectory() {
   return new InboxRepositoryDirectory(new DrizzleInboxRepository(getDb()), () => new Date());
 }
 
@@ -40,7 +40,7 @@ export function composeReceiveEmail(): ReceiveEmailUseCase {
   const baseUrl = resendApiUrl();
 
   return new ReceiveEmailUseCase({
-    directory: directory(),
+    directory: inboxDirectory(),
     source: new ResendReceivedEmailSource({
       apiKey: requireEnv("RESEND_API_KEY"),
       baseUrl,
@@ -65,6 +65,6 @@ export function composeReceiveEmail(): ReceiveEmailUseCase {
 
 /** Leitura das Mensagens: só precisa do banco (nada de R2 nem Resend). */
 export function composeMessageReaders() {
-  const deps = { directory: directory(), repository: new DrizzleMessageRepository(getDb()) };
+  const deps = { directory: inboxDirectory(), repository: new DrizzleMessageRepository(getDb()) };
   return { list: new ListMessagesUseCase(deps), get: new GetMessageUseCase(deps) };
 }

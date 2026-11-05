@@ -111,7 +111,10 @@ export class ReceiveEmailUseCase {
         rawSize: download ? download.bytes.byteLength : null,
         attachments: content.attachments.length > 0 ? content.attachments : event.attachments,
         receivedAt: content.receivedAt ?? event.receivedAt ?? now,
-        createdAt: now,
+        // A hora de gravar, não a de começar: o cursor do wait_for_email segue
+        // o `createdAt`, e um email lento (download, R2) não pode ficar com hora
+        // anterior à de um que chegou depois e já foi entregue.
+        createdAt: deps.clock(),
       });
 
       if (await deps.repository.insert(message)) {
@@ -141,7 +144,7 @@ export class ReceiveEmailUseCase {
           subject: event.subject,
           attachments: event.attachments,
           receivedAt: event.receivedAt ?? now,
-          createdAt: now,
+          createdAt: this.deps.clock(),
         },
         status,
       );

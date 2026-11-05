@@ -1,4 +1,4 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/shared/db/client";
 import type { MessageRepository } from "../application/ports";
 import { Message } from "../domain/Message";
@@ -90,6 +90,23 @@ export class DrizzleMessageRepository implements MessageRepository {
       .from(messages)
       .where(eq(messages.inboxId, inboxId))
       .orderBy(desc(messages.receivedAt), desc(messages.createdAt))
+      .limit(limit);
+    return rows.map(toDomain);
+  }
+
+  async listCreatedAfter(inboxId: string, after: Date, limit: number): Promise<Message[]> {
+    const rows = await this.db
+      .select()
+      .from(messages)
+      // O cursor é uma data do JS (milissegundos); uma linha gravada com
+      // microssegundos não pode passar por "depois" de si mesma.
+      .where(
+        and(
+          eq(messages.inboxId, inboxId),
+          gt(sql`date_trunc('milliseconds', ${messages.createdAt})`, after),
+        ),
+      )
+      .orderBy(asc(messages.createdAt), asc(messages.id))
       .limit(limit);
     return rows.map(toDomain);
   }
