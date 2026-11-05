@@ -1,8 +1,9 @@
 import { connection } from "next/server";
+import { InboxWorkspaceEntry } from "@/app/_components/InboxWorkspaceEntry";
 import { SignOutButton } from "@/app/_components/SignOutButton";
 import { requireMember } from "@/composition/membership";
-import { missingAuthEnv } from "@/shared/config/env";
-import { MemberHomePage } from "@/modules/membership/ui/MemberHomePage";
+import { mailDomain, missingAuthEnv, positiveIntEnv } from "@/shared/config/env";
+import { AppHeader } from "@/modules/membership/ui/AppHeader";
 import { NotConfiguredPage } from "@/modules/membership/ui/NotConfiguredPage";
 
 export default async function Page() {
@@ -15,10 +16,9 @@ export default async function Page() {
   const member = await requireMember();
 
   return (
-    <MemberHomePage
-      name={member.name}
-      githubUsername={member.githubUsername}
-      actions={<SignOutButton />}
-    />
+    <div className="app">
+      <AppHeader githubUsername={member.githubUsername} current="inboxes" actions={<SignOutButton />} />
+      <InboxWorkspaceEntry mailDomain={mailDomain()} ttlHours={positiveIntEnv("INBOX_TTL_HOURS", 24)} />
+    </div>
   );
 }

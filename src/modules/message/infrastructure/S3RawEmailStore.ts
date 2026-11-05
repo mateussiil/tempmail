@@ -1,5 +1,5 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { ConfigurationError, TransientError, type RawEmailStore } from "../application/ports";
+import { GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { ConfigurationError, TransientError, type RawEmailReader, type RawEmailStore } from "../application/ports";
 
 export function createR2Client(options: {
   endpoint: string;
@@ -19,8 +19,8 @@ export function createR2Client(options: {
   });
 }
 
-/** Guarda o `.eml` no bucket do R2 (API compatível com S3). */
-export class S3RawEmailStore implements RawEmailStore {
+/** Guarda e lê o `.eml` no bucket do R2 (API compatível com S3). */
+export class S3RawEmailStore implements RawEmailStore, RawEmailReader {
   constructor(
     private readonly options: { client: S3Client; bucket: string },
   ) {}
@@ -43,6 +43,19 @@ export class S3RawEmailStore implements RawEmailStore {
         );
       }
       throw new TransientError(`Falha ao gravar ${key} no R2: ${String(error)}`);
+    }
+  }
+
+  async get(key: string): Promise<Uint8Array | null> {
+    try {
+      const response = await this.options.client.send(
+        new GetObjectCommand({ Bucket: this.options.bucket, Key: key }),
+      );
+      return response.Body ? await response.Body.transformToByteArray() : null;
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      if (error instanceof NoSuchKey || status === 404) return null;
+      throw error;
     }
   }
 }

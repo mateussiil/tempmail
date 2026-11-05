@@ -39,6 +39,8 @@ src/
 
 Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados), `inbox` (Caixas) e `message` (recebimento e leitura de Mensagens) mostram as quatro camadas; `health` só tem as três primeiras, e `mcp` só a `ui` (as ferramentas do MCP, que são a apresentação para agentes e chamam os casos de uso de `inbox` e `message`). As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
 
+**No navegador**, os casos de uso rodam no servidor, atrás da API. A página fala com eles por *gateways*: a interface fica em `application/` (`InboxGateway`, `MessageGateway`, `ApiKeyGateway`), a implementação HTTP em `infrastructure/` e a montagem em `src/composition/browser.ts`. Cada tela tem um ponto de entrada em `ui/` (`InboxWorkspace`, `ApiKeysScreen`) que recebe os gateways, busca os dados e entrega aos componentes só o que eles mostram. Nos testes, os gateways falsos (`testing/`) rodam os casos de uso reais sobre repositórios em memória, então as telas passam pelas mesmas regras do servidor.
+
 ## Login e lista de autorizados
 
 Login com GitHub pelo [Better Auth](https://www.better-auth.com), sem senha e sem email. Só entra quem tem o username do GitHub em `ALLOWED_GITHUB_USERS` (separado por vírgula, sem diferenciar maiúsculas).
@@ -85,7 +87,7 @@ Erros vêm como `{"error": "<código>", "message": "<texto em português>"}`: `4
 
 ## Chaves de API
 
-Para usar a API fora do navegador (scripts, agentes e o [MCP](#servidor-mcp)), cada Membro cria **Chaves de API** com nome. O segredo (`tm_…`) aparece **uma vez só**, na criação; o banco guarda só o hash e o prefixo. A chave não expira nem tem escopo: vale até ser revogada, e tem os mesmos poderes do Membro.
+Para usar a API fora do navegador (scripts, agentes e o [MCP](#servidor-mcp)), cada Membro cria **Chaves de API** com nome. O segredo (`tm_…`) aparece **uma vez só**, na criação; o banco guarda só o hash e o prefixo. A chave não expira nem tem escopo: vale até ser revogada, e tem os mesmos poderes do Membro. Na página, as chaves ficam em **Chaves de API** (`/chaves`).
 
 | Rota | O que faz |
 | --- | --- |
@@ -127,8 +129,11 @@ O caminho de um email: o MX de `tmp.mateussiil.com.br` entrega ao **Resend** →
 |---|---|
 | `GET /api/inboxes/{id}/messages?limit=` | As Mensagens da Caixa, as mais recentes primeiro, sem o corpo (`limit` de 1 a 100, 50 por padrão). Uma Caixa expirada não tem Mensagens. |
 | `GET /api/messages/{id}` | A Mensagem completa: `text`, `html`, `verificationCode`, `attachments` (metadados) e `hasRaw`. |
+| `GET /api/messages/{id}/raw` | Baixa o `.eml` original, lido do R2. |
+| `GET /api/messages/{id}/headers` | Os cabeçalhos do email original, na ordem: `{"headers": [{"name", "value"}]}`. |
+| `GET /api/messages/{id}/attachments/{n}` | Baixa o anexo de posição `n` (a ordem de `attachments`), extraído do `.eml` na hora com o `mailparser`. |
 
-A Mensagem de outra pessoa, uma inexistente e uma de Caixa expirada respondem igual (`404`).
+A Mensagem de outra pessoa, uma inexistente e uma de Caixa expirada respondem igual (`404`). Sem o `.eml` guardado (cota ou tamanho), as três últimas respondem `404 no_raw`; sem as variáveis do R2, `503`. Os downloads são conteúdo de terceiros servido do domínio do app, então saem sempre como anexo (`Content-Disposition: attachment`), com `X-Content-Type-Options: nosniff` e `Content-Security-Policy: sandbox`: um HTML anexado nunca roda na origem do app.
 
 **Depuração.** Com `WEBHOOK_DEBUG_LOG=true`, o app registra o payload do webhook e a resposta crua do Resend (eventos `debug.*`). Serve para capturar exemplos reais; **use só com emails de teste e desligue depois**, porque o conteúdo dos emails vai para o log. Os segredos nunca são registrados.
 
@@ -188,6 +193,18 @@ curl -N https://tempmail.mateussiil.com.br/api/mcp \
 ```
 
 O progresso deve aparecer aos 10 s, 20 s…, e não tudo junto no fim. Se aparecer junto, algo no caminho está segurando o stream.
+
+## Página
+
+Em `https://tempmail.mateussiil.com.br`, depois de entrar com o GitHub. Segue o [protótipo aprovado](https://github.com/mateussiil/tempmail/issues/7).
+
+- **Caixas** (`/`): no computador, três colunas (Caixas, Mensagens, leitura); no celular, uma tela por vez (lista → Caixa → Mensagem), com "‹ Voltar". Atualiza por **polling a cada 5 s** (pausa com a aba escondida) e avisa quando está sem conexão.
+- **Leitura:** o código de verificação em destaque com "Copiar código"; abas **HTML** (num `iframe` com `sandbox` sem `allow-scripts` nem `allow-same-origin`, e uma CSP que só deixa carregar imagens e estilos; links abrem em nova aba), **Texto** e **Cabeçalhos**; "Baixar .eml" e os anexos para baixar. Mensagem sem conteúdo (cota do Resend ou tamanho) aparece como "Conteúdo indisponível".
+- **Nova caixa:** aleatória ou com nome escolhido, validado enquanto se digita (a regra do domínio roda no navegador; a disponibilidade vem de `GET /api/inboxes/availability`): livre, já é sua e expirada (o botão vira "Reativar caixa"), já ativa ou de outro Membro. Opção Manter.
+- **Caixa:** Manter, Apagar (com confirmação) e, expirada, "Reativar por 24 h" ou reativar e manter.
+- **Chaves de API** (`/chaves`): criar com nome (o segredo aparece uma vez, com o comando `claude mcp add` pronto), lista com prefixo, criação e último uso, e Revogar com confirmação.
+- Sessão que acaba ou Membro tirado da lista no meio do uso levam para `/entrar` ou "Seu acesso foi encerrado".
+- Tema claro e escuro, pelo sistema. As fontes (IBM Plex Sans e JetBrains Mono) vêm do `next/font` e são servidas pelo próprio app, então o build precisa de internet.
 
 ## Deploy (Coolify)
 
