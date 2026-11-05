@@ -11,6 +11,7 @@ import { DrizzleInboxRepository } from "@/modules/inbox/infrastructure/DrizzleIn
 import { generateRandomAddress } from "@/modules/inbox/infrastructure/randomAddress";
 import { mailDomain, positiveIntEnv } from "@/shared/config/env";
 import { getDb } from "@/shared/db/client";
+import { composeInboxContents } from "./expiration";
 
 /** Limite e prazo vêm do ambiente: MAX_ACTIVE_INBOXES_PER_MEMBER (20) e INBOX_TTL_HOURS (24). */
 export function composeInboxUseCases() {
@@ -24,6 +25,7 @@ export function composeInboxUseCases() {
     clock: () => new Date(),
     newId: () => randomUUID(),
     randomAddress: () => generateRandomAddress(),
+    contents: composeInboxContents(),
   };
 
   return {

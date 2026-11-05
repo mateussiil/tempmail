@@ -21,6 +21,8 @@ export class ReactivateInboxUseCase {
     const limit = await checkActiveLimit(this.deps, input.ownerId, now);
     if (limit) return fail(limit);
 
+    // Recomeça vazia, mesmo que a limpeza periódica ainda não tenha passado.
+    await this.deps.contents.clear(inbox.id);
     const reactivated = inbox.reactivate(now, this.deps.policy, input.keep ?? false);
     await this.deps.repository.save(reactivated);
     return ok(toInboxView(reactivated, now, this.deps.mailDomain));

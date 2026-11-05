@@ -9,6 +9,10 @@ export class FakeInboxRepository implements InboxRepository {
     return this.byId.get(id) ?? null;
   }
 
+  async findByIds(ids: string[]): Promise<Inbox[]> {
+    return ids.flatMap((id) => this.byId.get(id) ?? []);
+  }
+
   async findByAddress(address: string): Promise<Inbox | null> {
     return [...this.byId.values()].find((inbox) => inbox.address === address) ?? null;
   }

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/shared/db/client";
 import { Inbox } from "../domain/Inbox";
 import { InboxAddressConflictError, type InboxRepository } from "../application/InboxRepository";
@@ -25,6 +25,12 @@ export class DrizzleInboxRepository implements InboxRepository {
   async findById(id: string): Promise<Inbox | null> {
     const [row] = await this.db.select().from(inbox).where(eq(inbox.id, id)).limit(1);
     return row ? toDomain(row) : null;
+  }
+
+  async findByIds(ids: string[]): Promise<Inbox[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.select().from(inbox).where(inArray(inbox.id, ids));
+    return rows.map(toDomain);
   }
 
   async findByAddress(address: string): Promise<Inbox | null> {
