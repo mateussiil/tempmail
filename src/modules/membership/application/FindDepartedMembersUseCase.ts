@@ -12,7 +12,7 @@ export type DepartedMembers =
 
 /** Quem saiu do time: Membros cujo username não está mais na lista. */
 export class FindDepartedMembersUseCase {
-  constructor(private readonly deps: { members: MemberDirectory; allowlist: () => Allowlist }) {}
+  constructor(private readonly deps: { members: Pick<MemberDirectory, "listMembers">; allowlist: () => Allowlist }) {}
 
   async execute(): Promise<DepartedMembers> {
     const allowlist = this.deps.allowlist();

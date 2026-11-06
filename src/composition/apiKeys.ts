@@ -15,7 +15,7 @@ import { getDb } from "@/shared/db/client";
 // Um limitador só por processo: a contagem precisa sobreviver entre pedidos.
 const globalForLimiter = globalThis as unknown as { __tempmailLimiter?: FixedWindowRateLimiter };
 
-function limiter(): FixedWindowRateLimiter {
+export function limiter(): FixedWindowRateLimiter {
   globalForLimiter.__tempmailLimiter ??= new FixedWindowRateLimiter(apiRateLimitPerMinute());
   return globalForLimiter.__tempmailLimiter;
 }

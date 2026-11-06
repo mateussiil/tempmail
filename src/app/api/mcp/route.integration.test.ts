@@ -130,12 +130,13 @@ describe.skipIf(!url)("POST /api/mcp (Postgres real)", () => {
     }
   });
 
-  it("sem chave responde 401 com WWW-Authenticate, sem cair para a sessão", async () => {
+  it("sem credencial responde 401 com o desafio do OAuth, sem cair para a sessão", async () => {
     const response = await POST(request({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }));
 
     expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toMatch(/^Bearer/);
-    expect(await response.json()).toMatchObject({ error: "unauthenticated" });
+    expect(response.headers.get("www-authenticate")).toMatch(
+      /^Bearer resource_metadata="http:\/\/localhost:3000\/\.well-known\/oauth-protected-resource\/api\/mcp"/,
+    );
   });
 
   it("chave inválida responde 401", async () => {
