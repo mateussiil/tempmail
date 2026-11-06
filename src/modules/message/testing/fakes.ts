@@ -6,11 +6,13 @@ import type {
   EmailContent,
   EmailHeader,
   EmailParser,
+  ExpiredContentStore,
   FetchEmailError,
   InboxDirectory,
   MessageRepository,
   NewMessageSignal,
   RawDownload,
+  RawEmailBucket,
   RawEmailDownloader,
   RawEmailReader,
   RawEmailStore,
@@ -118,7 +120,7 @@ export class FakeRawEmailDownloader implements RawEmailDownloader {
   }
 }
 
-export class FakeRawEmailStore implements RawEmailStore {
+export class FakeRawEmailStore implements RawEmailStore, RawEmailBucket {
   readonly objects = new Map<string, Uint8Array>();
   /** Para simular falha do R2 numa chave. */
   failOn: (key: string) => boolean = () => false;
@@ -126,6 +128,45 @@ export class FakeRawEmailStore implements RawEmailStore {
   async put(key: string, bytes: Uint8Array): Promise<void> {
     if (this.failOn(key)) throw new Error(`R2 indisponível para ${key}`);
     this.objects.set(key, bytes);
+  }
+
+  async listKeys(prefix: string): Promise<string[]> {
+    return [...this.objects.keys()].filter((key) => key.startsWith(prefix)).sort();
+  }
+
+  async deleteKeys(keys: string[]): Promise<void> {
+    for (const key of keys) {
+      if (this.failOn(key)) throw new Error(`R2 indisponível para ${key}`);
+      this.objects.delete(key);
+    }
+  }
+}
+
+/**
+ * O conteúdo das Caixas expiradas, sobre o repositório falso de Mensagens. O
+ * teste diz quando cada Caixa expira (`expiresAt`; ausente = ativa).
+ */
+export class FakeExpiredContentStore implements ExpiredContentStore {
+  readonly expiresAt = new Map<string, Date | null>();
+
+  constructor(private readonly messages: FakeMessageRepository) {}
+
+  private isExpired(inboxId: string, now: Date): boolean {
+    const at = this.expiresAt.get(inboxId);
+    return at instanceof Date && at.getTime() <= now.getTime();
+  }
+
+  async inboxesWithContent(now: Date, limit: number): Promise<string[]> {
+    const ids = new Set([...this.messages.messages.values()].map((m) => m.inboxId));
+    return [...ids].filter((id) => this.isExpired(id, now)).slice(0, limit);
+  }
+
+  async purge(inboxId: string, now: Date, removeFiles: () => Promise<void>): Promise<number | null> {
+    if (!this.isExpired(inboxId, now)) return null;
+    const doomed = [...this.messages.messages.values()].filter((m) => m.inboxId === inboxId);
+    await removeFiles(); // se falhar, nada sai (como o rollback da transação)
+    for (const message of doomed) this.messages.messages.delete(message.id);
+    return doomed.length;
   }
 }
 

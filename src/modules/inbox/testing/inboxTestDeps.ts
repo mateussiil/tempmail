@@ -1,10 +1,21 @@
 import type { InboxDeps } from "../application/InboxDeps";
 import { InboxPolicy } from "../domain/InboxPolicy";
+import type { InboxContents } from "../application/InboxContents";
 import { FakeInboxRepository } from "./FakeInboxRepository";
+
+/** Anota as Caixas esvaziadas. */
+export class FakeInboxContents implements InboxContents {
+  readonly cleared: string[] = [];
+
+  async clear(inboxId: string): Promise<void> {
+    this.cleared.push(inboxId);
+  }
+}
 
 /** Dependências de teste: relógio que anda sob controle, ids e endereços previsíveis. */
 export function makeInboxDeps(options: { max?: number; repository?: FakeInboxRepository } = {}) {
   const repository = options.repository ?? new FakeInboxRepository();
+  const contents = new FakeInboxContents();
   let now = new Date("2026-11-05T12:00:00Z");
   let ids = 0;
   let randoms = 0;
@@ -16,11 +27,13 @@ export function makeInboxDeps(options: { max?: number; repository?: FakeInboxRep
     clock: () => now,
     newId: () => `id-${++ids}`,
     randomAddress: () => `aleatoria${++randoms}`,
+    contents,
   };
 
   return {
     deps,
     repository,
+    contents,
     now: () => now,
     advanceHours(hours: number) {
       now = new Date(now.getTime() + hours * 3_600_000);

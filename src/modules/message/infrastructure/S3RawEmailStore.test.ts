@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from "vitest";
 import { ConfigurationError, TransientError } from "../application/ports";
+import { startS3Stub } from "../testing/s3Stub";
 import { startStubServer } from "../testing/stubServer";
 import { createR2Client, S3RawEmailStore } from "./S3RawEmailStore";
 
@@ -104,5 +105,28 @@ describe("S3RawEmailStore", () => {
     }));
 
     expect(await store(stub.url).get("caixas/i/sumiu.eml")).toBeNull();
+  });
+
+  it("lista todas as chaves de um prefixo, seguindo a paginação", async () => {
+    const s3 = await startS3Stub({ pageSize: 2 });
+    stub = s3;
+    for (const key of ["caixas/a/1.eml", "caixas/a/2.eml", "caixas/a/3.eml", "caixas/b/1.eml", "outra/x"]) {
+      s3.objects.set(key, Buffer.from("x"));
+    }
+
+    expect(await store(s3.url).listKeys("caixas/a/")).toEqual(["caixas/a/1.eml", "caixas/a/2.eml", "caixas/a/3.eml"]);
+    expect(await store(s3.url).listKeys("caixas/")).toHaveLength(4);
+  });
+
+  it("apaga as chaves pedidas, inclusive as que já não existem", async () => {
+    const s3 = await startS3Stub();
+    stub = s3;
+    for (let i = 0; i < 20; i++) s3.objects.set(`caixas/a/${i}.eml`, Buffer.from("x"));
+    s3.objects.set("caixas/b/fica.eml", Buffer.from("x"));
+    const keys = [...s3.objects.keys()].filter((k) => k.startsWith("caixas/a/"));
+
+    await store(s3.url).deleteKeys([...keys, "caixas/a/nunca-existiu.eml"]);
+
+    expect([...s3.objects.keys()]).toEqual(["caixas/b/fica.eml"]);
   });
 });

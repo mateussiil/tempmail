@@ -117,3 +117,30 @@ export type EmailAttachment = {
 export interface EmailParser {
   parse(raw: Uint8Array): Promise<{ headers: EmailHeader[]; attachments: EmailAttachment[] }>;
 }
+
+/** Listar e apagar arquivos no bucket (a limpeza da expiração e a varredura). */
+export interface RawEmailBucket {
+  /** Todas as chaves que começam com `prefix`. */
+  listKeys(prefix: string): Promise<string[]>;
+  /** Apaga as chaves (as que não existem mais são ignoradas). */
+  deleteKeys(keys: string[]): Promise<void>;
+}
+
+/** O conteúdo guardado das Caixas que já expiraram. */
+export interface ExpiredContentStore {
+  /** Caixas expiradas em `now` que ainda têm Mensagens, até `limit`. */
+  inboxesWithContent(now: Date, limit: number): Promise<string[]>;
+  /**
+   * Numa transação, trava a Caixa e, se ela continua expirada em `now`, apaga
+   * as Mensagens e roda `removeFiles` antes de confirmar (se os arquivos
+   * falham, as Mensagens voltam e a próxima execução tenta de novo). Devolve
+   * quantas Mensagens apagou, ou `null` se a Caixa não está mais expirada
+   * (foi reativada no meio do caminho).
+   */
+  purge(inboxId: string, now: Date, removeFiles: () => Promise<void>): Promise<number | null>;
+}
+
+/** Quais destas Caixas estão ativas (as que não existem não estão). */
+export interface ActiveInboxes {
+  activeIds(inboxIds: string[]): Promise<Set<string>>;
+}

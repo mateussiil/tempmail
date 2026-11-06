@@ -88,3 +88,19 @@ describe("missingAuthEnv", () => {
     expect(missingAuthEnv(env)).toEqual(["BETTER_AUTH_SECRET", "GITHUB_CLIENT_ID"]);
   });
 });
+
+describe("limpeza periódica", () => {
+  it("liga por padrão e só desliga com RUN_EXPIRATION=false", async () => {
+    const { shouldRunExpiration } = await import("./env");
+    expect(shouldRunExpiration({})).toBe(true);
+    expect(shouldRunExpiration({ RUN_EXPIRATION: "FALSE" })).toBe(false);
+    expect(shouldRunExpiration({ RUN_EXPIRATION: "true" })).toBe(true);
+  });
+
+  it("intervalo em minutos, 10 por padrão", async () => {
+    const { expirationIntervalMs } = await import("./env");
+    expect(expirationIntervalMs({})).toBe(600_000);
+    expect(expirationIntervalMs({ EXPIRATION_INTERVAL_MINUTES: "2" })).toBe(120_000);
+    expect(() => expirationIntervalMs({ EXPIRATION_INTERVAL_MINUTES: "0" })).toThrow();
+  });
+});

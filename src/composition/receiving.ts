@@ -71,7 +71,7 @@ export function composeMessageReaders() {
   return { list: new ListMessagesUseCase(deps), get: new GetMessageUseCase(deps) };
 }
 
-function r2Store(): S3RawEmailStore {
+export function r2Store(): S3RawEmailStore {
   return new S3RawEmailStore({
     client: createR2Client({
       endpoint: requireEnv("R2_ENDPOINT"),

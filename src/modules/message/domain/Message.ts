@@ -29,6 +29,9 @@ type Common = {
   createdAt: Date;
 };
 
+/** Onde ficam os `.eml` no bucket: `caixas/<id-da-caixa>/<id-da-mensagem>.eml`. */
+export const RAW_PREFIX = "caixas/";
+
 /** Mensagem: um email recebido por uma Caixa (ver `CONTEXT.md`). */
 export class Message {
   private constructor(
@@ -65,7 +68,20 @@ export class Message {
   }
 
   static rawKeyFor(inboxId: string, messageId: string): string {
-    return `caixas/${inboxId}/${messageId}.eml`;
+    return `${Message.inboxPrefix(inboxId)}${messageId}.eml`;
+  }
+
+  /** O prefixo de todos os arquivos de uma Caixa no bucket. */
+  static inboxPrefix(inboxId: string): string {
+    return `${RAW_PREFIX}${inboxId}/`;
+  }
+
+  /** A Caixa dona de uma chave do bucket; `null` se a chave não segue o padrão. */
+  static inboxIdOfKey(key: string): string | null {
+    if (!key.startsWith(RAW_PREFIX)) return null;
+    const rest = key.slice(RAW_PREFIX.length);
+    const slash = rest.indexOf("/");
+    return slash > 0 ? rest.slice(0, slash) : null;
   }
 
   static ready(

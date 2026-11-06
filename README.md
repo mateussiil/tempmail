@@ -65,10 +65,10 @@ Uma **Caixa** é um endereço `<nome>@tmp.mateussiil.com.br` criado explicitamen
 **Regras**
 - **Criação explícita.** Nome escolhido (3 a 40 caracteres: letras, números, ponto e hífen, sem separador no começo, no fim ou repetido; guardado em minúsculas) ou aleatório (8 caracteres, como `k7f3qx9m`).
 - **O endereço é do primeiro Dono pra sempre**, mesmo depois de expirar. Criar um endereço seu que expirou **reativa** a mesma Caixa, vazia. Endereço de outro Membro é recusado.
-- **Prazo** de 24 h (`INBOX_TTL_HOURS`). **Manter** tira o prazo; **Apagar** expira agora (inclusive uma mantida); **Reativar** devolve a Caixa com novo prazo, ou já mantida.
+- **Prazo** de 24 h (`INBOX_TTL_HOURS`). **Manter** tira o prazo; **Apagar** expira agora (inclusive uma mantida); **Reativar** devolve a Caixa vazia (as Mensagens e os arquivos saem na hora), com novo prazo ou já mantida.
 - **Limite** de 20 Caixas ativas por Membro, contando as mantidas (`MAX_ACTIVE_INBOXES_PER_MEMBER`). Apagar ou expirar libera vaga.
 - A Caixa de outro Membro e uma inexistente respondem igual (`404`).
-- O estado "expirada" é calculado pelo prazo na hora da leitura. Apagar as Mensagens e os arquivos do R2 de uma Caixa expirada é trabalho do ticket de expiração.
+- O estado "expirada" é calculado pelo prazo na hora da leitura; a [limpeza periódica](#expiração-e-limpeza) apaga depois as Mensagens e os arquivos.
 
 **API** (autenticada pela sessão do navegador; as chaves de API entram no ticket das chaves):
 
@@ -193,6 +193,18 @@ curl -N https://tempmail.mateussiil.com.br/api/mcp \
 ```
 
 O progresso deve aparecer aos 10 s, 20 s…, e não tudo junto no fim. Se aparecer junto, algo no caminho está segurando o stream.
+
+## Expiração e limpeza
+
+Uma limpeza roda **dentro do próprio servidor**: 30 s depois de subir e depois a cada `EXPIRATION_INTERVAL_MINUTES` (10). Não precisa de tarefa agendada no Coolify. São três passos independentes (um que falha não impede os outros) e um relatório no log (`expiration.run`):
+
+1. **Saída do time.** Quem tem um Membro criado mas saiu de `ALLOWED_GITHUB_USERS` tem todas as Caixas ativas expiradas, **inclusive as mantidas**. Os endereços continuam dele. Lista **vazia** não conta como "todo mundo saiu": esse passo é pulado (`expiration.empty_allowlist`), pra uma variável esquecida num deploy não expirar as Caixas do time inteiro. O login, com a lista vazia, continua não deixando ninguém entrar.
+2. **Expiração.** Cada Caixa vencida que ainda tem Mensagens perde as linhas no Postgres e os arquivos do prefixo `caixas/<id>/` no R2. O registro da Caixa fica, só com endereço e Dono. É feito numa transação que trava a linha da Caixa e confere de novo se ela continua expirada: uma reativação ao mesmo tempo espera, e a Caixa volta vazia. Se o R2 falha, a transação desfaz e a Caixa fica pra próxima execução.
+3. **Varredura do R2.** Lista tudo em `caixas/` e apaga os arquivos de Caixas que não estão ativas (ou não existem), pegando falhas parciais e um `.eml` gravado logo depois de a Caixa expirar. Sem R2 configurado, esse passo não roda.
+
+A limpeza roda sob um **lock do Postgres** (`pg_try_advisory_lock`): duas execuções ao mesmo tempo, no mesmo processo ou em outra instância, não se atropelam (a segunda pula com `expiration.skipped`). Para desligar, `RUN_EXPIRATION=false`.
+
+**Reativar** (pela página, pela API ou criando de novo um endereço seu expirado) esvazia a Caixa na hora, sem esperar a limpeza. Se o R2 falhar nesse momento, a reativação segue; os arquivos ficam no prefixo da Caixa e saem na próxima expiração dela.
 
 ## Página
 

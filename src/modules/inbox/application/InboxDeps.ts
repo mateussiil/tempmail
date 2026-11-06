@@ -1,5 +1,6 @@
 import type { Inbox } from "../domain/Inbox";
 import type { InboxPolicy } from "../domain/InboxPolicy";
+import type { InboxContents } from "./InboxContents";
 import type { InboxError } from "./InboxError";
 import type { InboxRepository } from "./InboxRepository";
 
@@ -13,6 +14,8 @@ export type InboxDeps = {
   newId: () => string;
   /** Gera um endereço aleatório (só a parte antes do `@`). */
   randomAddress: () => string;
+  /** Esvazia a Caixa ao reativar (as Mensagens são de outro módulo). */
+  contents: InboxContents;
 };
 
 /** `null` se o Membro ainda pode ter mais uma Caixa ativa; senão o erro. */

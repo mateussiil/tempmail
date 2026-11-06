@@ -10,6 +10,8 @@ export class InboxAddressConflictError extends Error {
 
 export interface InboxRepository {
   findById(id: string): Promise<Inbox | null>;
+  /** As que existem entre `ids`, em qualquer estado. */
+  findByIds(ids: string[]): Promise<Inbox[]>;
   /** O endereço já normalizado (minúsculas). Vale em qualquer estado da Caixa. */
   findByAddress(address: string): Promise<Inbox | null>;
   listByOwner(ownerId: string): Promise<Inbox[]>;

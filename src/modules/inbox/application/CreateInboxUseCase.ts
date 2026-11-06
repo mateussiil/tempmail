@@ -88,6 +88,8 @@ export class CreateInboxUseCase {
     const limit = await checkActiveLimit(this.deps, ownerId, now);
     if (limit) return fail(limit);
 
+    // Reativar é recomeçar vazia, mesmo que a limpeza periódica ainda não tenha passado.
+    await this.deps.contents.clear(existing.id);
     const reactivated = existing.reactivate(now, this.deps.policy, false);
     await this.deps.repository.save(reactivated);
     return ok({

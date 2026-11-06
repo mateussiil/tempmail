@@ -1,5 +1,12 @@
-import { GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { ConfigurationError, TransientError, type RawEmailReader, type RawEmailStore } from "../application/ports";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  NoSuchKey,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { ConfigurationError, TransientError, type RawEmailBucket, type RawEmailReader, type RawEmailStore } from "../application/ports";
 
 export function createR2Client(options: {
   endpoint: string;
@@ -20,7 +27,7 @@ export function createR2Client(options: {
 }
 
 /** Guarda e lê o `.eml` no bucket do R2 (API compatível com S3). */
-export class S3RawEmailStore implements RawEmailStore, RawEmailReader {
+export class S3RawEmailStore implements RawEmailStore, RawEmailReader, RawEmailBucket {
   constructor(
     private readonly options: { client: S3Client; bucket: string },
   ) {}
@@ -58,4 +65,34 @@ export class S3RawEmailStore implements RawEmailStore, RawEmailReader {
       throw error;
     }
   }
+
+  async listKeys(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let token: string | undefined;
+    do {
+      const page = await this.options.client.send(
+        new ListObjectsV2Command({ Bucket: this.options.bucket, Prefix: prefix, ContinuationToken: token }),
+      );
+      for (const object of page.Contents ?? []) if (object.Key) keys.push(object.Key);
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return keys;
+  }
+
+  /**
+   * Um pedido por arquivo, alguns de cada vez. O `DeleteObjects` em lote
+   * exige um checksum que o R2 trata diferente do S3; com poucos arquivos por
+   * Caixa, um a um é simples e seguro. Apagar o que não existe não é erro.
+   */
+  async deleteKeys(keys: string[]): Promise<void> {
+    const queue = [...keys];
+    const worker = async () => {
+      for (let key = queue.shift(); key !== undefined; key = queue.shift()) {
+        await this.options.client.send(new DeleteObjectCommand({ Bucket: this.options.bucket, Key: key }));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(DELETE_CONCURRENCY, queue.length) }, worker));
+  }
 }
+
+const DELETE_CONCURRENCY = 8;

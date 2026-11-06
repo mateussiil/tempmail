@@ -18,6 +18,11 @@ export class Allowlist {
     return new Allowlist(new Set(names));
   }
 
+  /** Lista vazia: ninguém entra (e ninguém deve ser tratado como "saiu do time" por engano). */
+  get isEmpty(): boolean {
+    return this.usernames.size === 0;
+  }
+
   allows(username: string | null | undefined): boolean {
     if (!username) return false;
     return this.usernames.has(normalize(username));

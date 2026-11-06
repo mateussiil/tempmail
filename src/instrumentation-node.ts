@@ -1,4 +1,4 @@
-import { shouldRunMigrations } from "@/shared/config/env";
+import { expirationIntervalMs, shouldRunExpiration, shouldRunMigrations } from "@/shared/config/env";
 import { getPool } from "@/shared/db/client";
 import { runMigrations } from "@/shared/db/migrate";
 
@@ -7,4 +7,12 @@ import { runMigrations } from "@/shared/db/migrate";
 if (process.env.DATABASE_URL && shouldRunMigrations()) {
   const result = await runMigrations(getPool());
   console.log(`[startup] migrations: ${result}`);
+}
+
+// A limpeza periódica: Caixas de quem saiu do time, Caixas vencidas e a varredura do R2.
+if (process.env.DATABASE_URL && shouldRunExpiration()) {
+  const { startExpirationSchedule } = await import("@/composition/expiration");
+  const intervalMs = expirationIntervalMs();
+  startExpirationSchedule(intervalMs);
+  console.log(`[startup] expiração a cada ${intervalMs / 60_000} min`);
 }

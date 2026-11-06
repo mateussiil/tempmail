@@ -96,6 +96,16 @@ export function missingAuthEnv(env: Record<string, string | undefined> = process
   return AUTH_ENV_VARS.filter((name) => !env[name]);
 }
 
+/** A limpeza periódica (expiração e varredura) roda dentro do servidor, a menos que RUN_EXPIRATION=false. */
+export function shouldRunExpiration(env: Record<string, string | undefined> = process.env): boolean {
+  return env.RUN_EXPIRATION?.trim().toLowerCase() !== "false";
+}
+
+/** De quanto em quanto tempo a limpeza roda (`EXPIRATION_INTERVAL_MINUTES`, 10). */
+export function expirationIntervalMs(env: Record<string, string | undefined> = process.env): number {
+  return positiveIntEnv("EXPIRATION_INTERVAL_MINUTES", 10, env) * 60_000;
+}
+
 /** As migrations rodam na subida do servidor, a menos que RUN_MIGRATIONS=false. */
 export function shouldRunMigrations(): boolean {
   return process.env.RUN_MIGRATIONS !== "false";
