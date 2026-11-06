@@ -1,8 +1,8 @@
 import { describeInboxError, type InboxError } from "@/modules/inbox/application/InboxError";
 
 /** Resposta JSON sem cache: o conteúdo é de um Membro e muda o tempo todo. */
-export function jsonNoStore(body: unknown, status = 200): Response {
-  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+export function jsonNoStore(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
 
 export function badRequest(message: string): Response {

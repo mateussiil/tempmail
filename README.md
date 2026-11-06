@@ -160,7 +160,26 @@ No Cursor, em `~/.cursor/mcp.json` (ou `.cursor/mcp.json` no projeto), com a cha
 }
 ```
 
-**Autenticação.** Só com Chave de API (`Authorization: Bearer tm_…` ou `X-API-Key: tm_…`); a sessão do navegador não vale aqui. É a mesma autenticação da API: lista de autorizados conferida a cada pedido (`403 access_ended`), chave inválida ou revogada dá `401`, e o limite de 60 pedidos por minuto por chave dá `429` com `Retry-After`. **Cada pedido HTTP conta uma vez**, então um `wait_for_email` de 2 minutos é um pedido só. Sem chave, `401` com `WWW-Authenticate: Bearer`. O login por OAuth (conector do claude.ai) é outro ticket.
+**Autenticação.** Dois tipos de credencial, e a sessão do navegador não vale aqui:
+
+- **Chave de API** (`Authorization: Bearer tm_…` ou `X-API-Key`): Claude Code, Cursor, scripts. É a mesma autenticação da API.
+- **Token OAuth** emitido pelo próprio app: o [conector do claude.ai](#conector-do-claudeai-oauth).
+
+Nos dois casos, a lista de autorizados é conferida **a cada pedido** (`403 access_ended`) e vale o limite de 60 pedidos por minuto (`429` com `Retry-After`): por chave, ou por Membro e cliente no OAuth. **Cada pedido HTTP conta uma vez**, então um `wait_for_email` de 2 minutos é um pedido só. Sem credencial, `401` com `WWW-Authenticate: Bearer resource_metadata="…"`, que é o que faz um cliente OAuth começar o login.
+
+### Conector do claude.ai (OAuth)
+
+O app também é o **servidor OAuth** do próprio MCP (plugins `mcp`, `jwt` e `cimd` do Better Auth). Assim, cada pessoa do time conecta o tempmail no claude.ai (web, Desktop, celular) com a própria conta, sem Chave de API.
+
+**Conectar (cada pessoa):** no claude.ai, em Configurações → Conectores → **Adicionar conector personalizado**, use a URL `https://tempmail.mateussiil.com.br/api/mcp` e deixe os campos de OAuth em branco. O claude.ai abre o login: entre com o GitHub, veja a tela "Claude quer acessar o seu tempmail" e clique em **Permitir**.
+
+**Como funciona:**
+- **Descoberta.** O `401` do `/api/mcp` aponta para `/.well-known/oauth-protected-resource/api/mcp` (RFC 9728), que diz que o servidor de autorização é `…/api/auth`. Os metadados dele ficam em `/.well-known/oauth-authorization-server/api/auth` (RFC 8414) e `/.well-known/openid-configuration/api/auth`.
+- **Quem pode ser cliente.** O claude.ai se identifica por um *Client ID Metadata Document* (CIMD): uma URL `https://claude.ai/…` com os dados dele, que o app busca e confere. **Só são aceitos documentos de `claude.ai`** (`OAUTH_CLIENT_HOSTS` muda a lista). O registro dinâmico de clientes (DCR) fica desligado, então ninguém mais consegue se cadastrar como cliente.
+- **Login e consentimento.** O pedido chega assinado a `/entrar`. O login pelo GitHub segue igual, e o Better Auth continua o pedido sozinho na volta. Depois vem `/consentir`, que mostra quem pede, o que pode fazer e para qual host a autorização volta (com um aviso quando é um endereço local, como no Claude Code). O consentimento fica guardado: na próxima vez, a tela não aparece de novo.
+- **Lista de autorizados.** Quem está fora dela não autoriza nada: o `authorize` e o consentimento respondem `403`, e `/consentir` manda para "Seu acesso foi encerrado". Quem sai da lista **depois** de conectar perde o acesso no pedido seguinte, porque o MCP confere a lista em todo pedido, mesmo com o token ainda válido.
+- **Tokens.** O access token é um JWT preso ao recurso (`aud` = `…/api/mcp`), com o Membro em `sub` e o escopo `tempmail`. O refresh token é rotacionado a cada uso. Para validar a assinatura, o MCP busca as chaves públicas no próprio servidor por dentro (`http://127.0.0.1:$PORT/api/auth/jwks`), sem sair pela internet; `OAUTH_JWKS_URL` muda isso.
+- **Tabelas.** As do OAuth (`oauth_client`, `oauth_access_token`, `oauth_refresh_token`, `oauth_consent`…) e a `jwks` vêm da migration `0004_oauth`, gerada pelo CLI do Better Auth como as outras.
 
 **Ferramentas.** Todas enxergam só as Caixas e Mensagens do dono da chave; a de outro Membro responde `not_found`, igual a uma que não existe.
 
