@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FakeApiKeyGateway } from "../testing/FakeApiKeyGateway";
-import { claudeMcpCommand } from "./ApiKeysPanel";
+import { claudeMcpCommand } from "./clientSetups";
 import { ApiKeysScreen } from "./ApiKeysScreen";
 
 const MCP = "https://tempmail.exemplo.test/api/mcp";
@@ -46,6 +46,25 @@ describe("ApiKeysScreen", () => {
 
     await u.click(screen.getByRole("button", { name: "Já copiei" }));
     expect(screen.queryByText("tm_teste10-segredo-de-teste")).not.toBeInTheDocument();
+  });
+
+  it("mostra os passos do cliente escolhido, já com a chave", async () => {
+    await setup();
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole("button", { name: "Nova chave" }));
+    await u.type(screen.getByLabelText(/Nome da chave/), "codex");
+    await u.click(screen.getByRole("button", { name: "Criar chave" }));
+
+    const picker = await screen.findByRole("radiogroup", { name: "Onde você vai usar a chave" });
+    expect(within(picker).getByRole("radio", { name: "Claude Code" })).toHaveAttribute("aria-checked", "true");
+
+    await u.click(within(picker).getByRole("radio", { name: "Codex" }));
+    const codex = screen.getByRole("region", { name: "Como conectar: Codex" });
+    expect(within(codex).getByText("export TEMPMAIL_KEY=tm_teste10-segredo-de-teste")).toBeInTheDocument();
+    expect(within(codex).getAllByRole("button", { name: /Copiar/ })).toHaveLength(2);
+
+    await u.click(within(picker).getByRole("radio", { name: "Grok (API)" }));
+    expect(screen.getByRole("region", { name: "Como conectar: Grok (API)" })).toHaveTextContent('"X-API-Key": "tm_teste10-segredo-de-teste"');
   });
 
   it("revoga com confirmação", async () => {
