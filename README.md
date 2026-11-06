@@ -95,6 +95,8 @@ Para usar a API fora do navegador (scripts, agentes e o [MCP](#servidor-mcp)), c
 | `GET /api/keys` | Lista as suas chaves (prefixo, último uso, revogada), sem o segredo. |
 | `DELETE /api/keys/{id}` | Revoga; deixa de valer no pedido seguinte. Repetir não faz mal. |
 
+Ao criar uma chave, a página pergunta **onde ela vai ser usada** (Claude Code, Codex, Cursor, Grok pela API da xAI, outro cliente MCP ou um bot pela API REST) e mostra os passos daquele cliente já com a chave, prontos pra copiar. Crie uma chave por ferramenta: o último uso de cada uma aparece na lista, e uma que vazar é revogada sozinha.
+
 Essas três rotas só aceitam a **sessão do navegador** (uma chave vazada não gera outras). Todas as outras rotas aceitam a chave, em `Authorization: Bearer tm_…` ou `X-API-Key: tm_…`:
 
 ```bash

@@ -1124,3 +1124,49 @@ code {
   gap: 10px;
   margin-top: 4px;
 }
+
+/* ---------- onde usar a chave ---------- */
+
+.client-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.client-picker button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ok-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.client-picker button[aria-checked="true"] {
+  border-color: var(--ok-strong);
+  background: var(--ok-strong);
+  color: var(--ok-soft);
+  font-weight: 500;
+}
+
+.client-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.client-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row.align-start {
+  align-items: flex-start;
+}
+
+pre.secret {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+}

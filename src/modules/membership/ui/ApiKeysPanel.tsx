@@ -4,17 +4,19 @@ import { useState } from "react";
 import { CopyButton } from "@/shared/ui/CopyButton";
 import { shortDate, timeAgo } from "@/shared/ui/format";
 import type { ApiKeyView } from "../application/ApiKeyView";
-
-/** O comando pronto para conectar o Claude Code ao MCP com esta chave. */
-export function claudeMcpCommand(mcpUrl: string, token: string): string {
-  return `claude mcp add --transport http tempmail ${mcpUrl} --header "Authorization: Bearer ${token}"`;
-}
+import { clientSetups } from "./clientSetups";
 
 type CreatedKeyNoticeProps = { name: string; token: string; mcpUrl: string; onDismiss: () => void };
 
-/** A chave recém-criada: o segredo aparece só aqui, com o comando do Claude Code pronto. */
+/**
+ * A chave recém-criada: o segredo aparece só aqui. A pessoa escolhe onde vai
+ * usar (Claude Code, Codex, Cursor, Grok…) e recebe os passos já com a chave.
+ */
 export function CreatedKeyNotice({ name, token, mcpUrl, onDismiss }: CreatedKeyNoticeProps) {
-  const command = claudeMcpCommand(mcpUrl, token);
+  const setups = clientSetups(mcpUrl, token);
+  const [chosen, setChosen] = useState(setups[0].id);
+  const setup = setups.find((s) => s.id === chosen) ?? setups[0];
+
   return (
     <div className="notice notice-ok" role="status">
       <strong>Chave &quot;{name}&quot; criada. Copie agora: ela não aparece de novo.</strong>
@@ -24,13 +26,38 @@ export function CreatedKeyNotice({ name, token, mcpUrl, onDismiss }: CreatedKeyN
           Copiar
         </CopyButton>
       </div>
-      <span className="small">No Claude Code:</span>
-      <div className="row">
-        <code className="secret mono small">{command}</code>
-        <CopyButton text={command} className="button button-quiet">
-          Copiar comando
-        </CopyButton>
+
+      <span className="small strong">Onde você vai usar?</span>
+      <div role="radiogroup" aria-label="Onde você vai usar a chave" className="client-picker">
+        {setups.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={option.id === setup.id}
+            onClick={() => setChosen(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
+
+      <section aria-label={`Como conectar: ${setup.label}`} className="client-setup">
+        <span className="small">{setup.hint}</span>
+        {setup.steps.map((step) => (
+          <div key={step.title} className="client-step">
+            <span className="small">{step.title}</span>
+            <div className="row align-start">
+              <pre className="secret mono small">{step.code}</pre>
+              <CopyButton text={step.code} className="button button-quiet">
+                Copiar
+              </CopyButton>
+            </div>
+          </div>
+        ))}
+        {setup.note ? <span className="small">{setup.note}</span> : null}
+      </section>
+
       <button type="button" className="link-button" onClick={onDismiss}>
         Já copiei
       </button>
