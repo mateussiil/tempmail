@@ -7,6 +7,8 @@ import type { InboxGateway } from "../application/InboxGateway";
 import { ListInboxesUseCase } from "../application/ListInboxesUseCase";
 import { ReactivateInboxUseCase } from "../application/ReactivateInboxUseCase";
 import { SetInboxKeptUseCase } from "../application/SetInboxKeptUseCase";
+import { SetInboxMascotUseCase } from "../application/SetInboxMascotUseCase";
+import type { MascotId } from "../domain/Mascot";
 import type { Result } from "@/shared/result";
 import { makeInboxDeps } from "./inboxTestDeps";
 
@@ -47,7 +49,11 @@ export class FakeInboxGateway implements InboxGateway {
     return this.failure("list") ?? { ok: true as const, value: await new ListInboxesUseCase(this.test.deps).execute({ ownerId: this.ownerId }) };
   }
 
-  async create(input: { address?: string }) {
+  async setMascot(inboxId: string, mascot: MascotId) {
+    return this.failure("setMascot") ?? toApi(await new SetInboxMascotUseCase(this.test.deps).execute({ ownerId: this.ownerId, inboxId, mascot }));
+  }
+
+  async create(input: { address?: string; mascot?: MascotId }) {
     return this.failure("create") ?? toApi(await new CreateInboxUseCase(this.test.deps).execute({ ownerId: this.ownerId, ...input }));
   }
 
@@ -69,6 +75,8 @@ export class FakeInboxGateway implements InboxGateway {
 
   /** Cria uma Caixa de outro Membro (pra testar "pertence a outro membro"). */
   async seedForOtherMember(address: string, ownerId = "bruno") {
-    await new CreateInboxUseCase(this.test.deps).execute({ ownerId, address });
+    const result = await new CreateInboxUseCase(this.test.deps).execute({ ownerId, address });
+    if (!result.ok) throw new Error(`seedForOtherMember: ${result.error.code}`);
+    return result.value.inbox;
   }
 }

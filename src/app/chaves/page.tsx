@@ -3,7 +3,8 @@ import { ApiKeysEntry } from "@/app/_components/ApiKeysEntry";
 import { SignOutButton } from "@/app/_components/SignOutButton";
 import { requireMember } from "@/composition/membership";
 import { missingAuthEnv } from "@/shared/config/env";
-import { AppHeader } from "@/modules/membership/ui/AppHeader";
+import { shellData } from "@/composition/shell";
+import { AppShell } from "@/modules/membership/ui/AppShell";
 import { NotConfiguredPage } from "@/modules/membership/ui/NotConfiguredPage";
 
 export const metadata = { title: "Chaves de API · tempmail" };
@@ -14,13 +15,12 @@ export default async function Page() {
   const missing = missingAuthEnv();
   if (missing.length > 0) return <NotConfiguredPage missing={missing} />;
 
-  const member = await requireMember();
+  const shell = await shellData(await requireMember());
   const mcpUrl = `${(process.env.BETTER_AUTH_URL ?? "").replace(/\/+$/, "")}/api/mcp`;
 
   return (
-    <div className="app">
-      <AppHeader githubUsername={member.githubUsername} current="keys" actions={<SignOutButton />} />
+    <AppShell {...shell} current="keys" signOut={<SignOutButton />}>
       <ApiKeysEntry mcpUrl={mcpUrl} />
-    </div>
+    </AppShell>
   );
 }

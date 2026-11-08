@@ -2,6 +2,7 @@ import { requestJson, type ApiResult, type FetchFn } from "@/shared/http/apiClie
 import type { AddressAvailability } from "../application/CheckAddressUseCase";
 import type { InboxGateway } from "../application/InboxGateway";
 import type { InboxView } from "../application/InboxView";
+import type { MascotId } from "../domain/Mascot";
 
 function unwrap<T, K extends string>(result: ApiResult<Record<K, T>>, key: K): ApiResult<T> {
   return result.ok ? { ok: true, value: result.value[key] } : result;
@@ -17,11 +18,22 @@ export class HttpInboxGateway implements InboxGateway {
     return unwrap(await requestJson<{ inboxes: InboxView[] }>(this.fetchFn, "/api/inboxes"), "inboxes");
   }
 
-  create(input: { address?: string }) {
+  create(input: { address?: string; mascot?: MascotId }) {
+    const body: Record<string, string> = {};
+    if (input.address !== undefined) body.address = input.address;
+    if (input.mascot !== undefined) body.mascot = input.mascot;
     return requestJson<{ inbox: InboxView; reactivated: boolean }>(this.fetchFn, "/api/inboxes", {
       method: "POST",
-      body: JSON.stringify(input.address === undefined ? {} : { address: input.address }),
+      body: JSON.stringify(body),
     });
+  }
+
+  async setMascot(inboxId: string, mascot: MascotId): Promise<ApiResult<InboxView>> {
+    const result = await requestJson<{ inbox: InboxView }>(this.fetchFn, inboxUrl(inboxId), {
+      method: "PATCH",
+      body: JSON.stringify({ mascot }),
+    });
+    return unwrap(result, "inbox");
   }
 
   async setKept(inboxId: string, kept: boolean): Promise<ApiResult<InboxView>> {

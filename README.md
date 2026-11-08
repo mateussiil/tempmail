@@ -39,7 +39,7 @@ src/
 
 Regras: componentes recebem só o que precisam (nunca repositório nem configuração); os pontos de entrada chamam os casos de uso e preparam os dados; os testes montam os casos de uso na mão, com repositórios falsos. Os módulos `membership` (login e lista de autorizados), `inbox` (Caixas) e `message` (recebimento e leitura de Mensagens) mostram as quatro camadas; `health` só tem as três primeiras, e `mcp` só a `ui` (as ferramentas do MCP, que são a apresentação para agentes e chamam os casos de uso de `inbox` e `message`). As regras de negócio dos casos de uso devolvem `Result` (sem lançar), e as rotas traduzem cada erro em um status HTTP.
 
-**No navegador**, os casos de uso rodam no servidor, atrás da API. A página fala com eles por *gateways*: a interface fica em `application/` (`InboxGateway`, `MessageGateway`, `ApiKeyGateway`), a implementação HTTP em `infrastructure/` e a montagem em `src/composition/browser.ts`. Cada tela tem um ponto de entrada em `ui/` (`InboxWorkspace`, `ApiKeysScreen`) que recebe os gateways, busca os dados e entrega aos componentes só o que eles mostram. Nos testes, os gateways falsos (`testing/`) rodam os casos de uso reais sobre repositórios em memória, então as telas passam pelas mesmas regras do servidor.
+**No navegador**, os casos de uso rodam no servidor, atrás da API. A página fala com eles por *gateways*: a interface fica em `application/` (`InboxGateway`, `MessageGateway`, `ApiKeyGateway`), a implementação HTTP em `infrastructure/` e a montagem em `src/composition/browser.ts`. Cada tela tem um ponto de entrada em `ui/` (`InboxesHome`, `InboxScreen`, `ApiKeysScreen`) que recebe os gateways, busca os dados e entrega aos componentes só o que eles mostram. Nos testes, os gateways falsos (`testing/`) rodam os casos de uso reais sobre repositórios em memória, então as telas passam pelas mesmas regras do servidor.
 
 ## Login e lista de autorizados
 
@@ -68,6 +68,7 @@ Uma **Caixa** é um endereço `<nome>@tmp.mateussiil.com.br` criado explicitamen
 - **Prazo** de 24 h (`INBOX_TTL_HOURS`). **Manter** tira o prazo; **Apagar** expira agora (inclusive uma mantida); **Reativar** devolve a Caixa vazia (as Mensagens e os arquivos saem na hora), com novo prazo ou já mantida.
 - **Limite** de 20 Caixas ativas por Membro, contando as mantidas (`MAX_ACTIVE_INBOXES_PER_MEMBER`). Apagar ou expirar libera vaga.
 - A Caixa de outro Membro e uma inexistente respondem igual (`404`).
+- **Mascote.** Cada Caixa tem um mensageiro (Hermes, Corvo, Pomba, Raposa, Gato, Polvo, Tartaruga, Coelho, Baleia, Coruja, Camaleão, Pica-pau, Lontra, Guaxinim, Capivara), escolhido ao criar ou sorteado. É só identidade visual e pode ser trocado em qualquer estado. As Caixas de antes da migration `0005_inbox_mascot` (coluna `mascot` vazia) ganham um mascote fixo calculado pelo endereço.
 - O estado "expirada" é calculado pelo prazo na hora da leitura; a [limpeza periódica](#expiração-e-limpeza) apaga depois as Mensagens e os arquivos.
 
 **API** (autenticada pela sessão do navegador; as chaves de API entram no ticket das chaves):
@@ -75,8 +76,8 @@ Uma **Caixa** é um endereço `<nome>@tmp.mateussiil.com.br` criado explicitamen
 | Rota | O que faz |
 |---|---|
 | `GET /api/inboxes` | Lista as suas Caixas: ativas primeiro, as mais novas antes. |
-| `POST /api/inboxes` | Cria. Corpo opcional `{"address": "meu-nome"}`; sem ele, endereço aleatório. Responde `201`, ou `200` com `reactivated: true` se reativou. |
-| `PATCH /api/inboxes/{id}` | `{"kept": true}` mantém, `{"kept": false}` deixa de manter. |
+| `POST /api/inboxes` | Cria. Corpo opcional `{"address": "meu-nome", "mascot": "coruja"}`; sem `address`, endereço aleatório; sem `mascot`, sorteado. Responde `201`, ou `200` com `reactivated: true` se reativou. |
+| `PATCH /api/inboxes/{id}` | `{"kept": true}` mantém, `{"kept": false}` deixa de manter; `{"mascot": "polvo"}` troca o mascote (os dois campos podem vir juntos). |
 | `DELETE /api/inboxes/{id}` | Apaga (expira agora). Repetir não faz mal. |
 | `POST /api/inboxes/{id}/reactivate` | Reativa uma Caixa expirada. Corpo opcional `{"keep": true}`. |
 | `GET /api/inboxes/availability?address=…` | Diz o que aconteceria ao criar: `free`, `yours_expired`, `yours_active`, `taken` ou `invalid` (com `problem`). |
@@ -187,7 +188,7 @@ O app também é o **servidor OAuth** do próprio MCP (plugins `mcp`, `jwt` e `c
 
 | Ferramenta | O que faz |
 |---|---|
-| `create_inbox` | Cria uma Caixa (`address` opcional; sem ele, aleatório). Devolve `id` e `fullAddress`. Criar um endereço seu expirado reativa a Caixa. |
+| `create_inbox` | Cria uma Caixa (`address` opcional; sem ele, aleatório; `mascot` opcional, sorteado se faltar). Devolve `id` e `fullAddress`. Criar um endereço seu expirado reativa a Caixa. |
 | `list_inboxes` | Lista as suas Caixas ativas (`include_expired: true` para todas). |
 | `keep_inbox` | Mantém (`kept: true`, o padrão) ou deixa de manter uma Caixa ativa. |
 | `delete_inbox` | Apaga (expira agora). Marcada como destrutiva. |
@@ -231,13 +232,14 @@ A limpeza roda sob um **lock do Postgres** (`pg_try_advisory_lock`): duas execu�
 
 Em `https://tempmail.mateussiil.com.br`, depois de entrar com o GitHub. Segue o [protótipo aprovado](https://github.com/mateussiil/tempmail/issues/7).
 
-- **Caixas** (`/`): no computador, três colunas (Caixas, Mensagens, leitura); no celular, uma tela por vez (lista → Caixa → Mensagem), com "‹ Voltar". Atualiza por **polling a cada 5 s** (pausa com a aba escondida) e avisa quando está sem conexão.
+- **Suas caixas** (`/`): a lista, cada Caixa com o seu mascote, o prazo e um menu "…" (Copiar endereço, Manter, Reativar, Trocar mascote, Apagar com confirmação). Expiradas aparecem esmaecidas, com "Reativar" à mão. Navegação lateral (Caixas, com o número de ativas, e Chaves de API); no celular ela vira uma barra no topo.
+- **Caixa** (`/caixas/{id}`): mascote (clicar troca), endereço, prazo e as ações; no computador, as Mensagens e a leitura lado a lado; no celular, uma de cada vez, com "‹ Mensagens". Abre sozinha a Mensagem mais recente. A lista e a Caixa atualizam por **polling a cada 5 s** (pausa com a aba escondida) e avisam quando estão sem conexão.
 - **Leitura:** o código de verificação em destaque com "Copiar código"; abas **HTML** (num `iframe` com `sandbox` sem `allow-scripts` nem `allow-same-origin`, e uma CSP que só deixa carregar imagens e estilos; links abrem em nova aba), **Texto** e **Cabeçalhos**; "Baixar .eml" e os anexos para baixar. Mensagem sem conteúdo (cota do Resend ou tamanho) aparece como "Conteúdo indisponível".
-- **Nova caixa:** aleatória ou com nome escolhido, validado enquanto se digita (a regra do domínio roda no navegador; a disponibilidade vem de `GET /api/inboxes/availability`): livre, já é sua e expirada (o botão vira "Reativar caixa"), já ativa ou de outro Membro. Opção Manter.
-- **Caixa:** Manter, Apagar (com confirmação) e, expirada, "Reativar por 24 h" ou reativar e manter.
+- **Nova caixa:** aleatória ou com nome escolhido, com o **mensageiro** escolhido numa grade dos 15 mascotes (vem um sorteado), validado enquanto se digita (a regra do domínio roda no navegador; a disponibilidade vem de `GET /api/inboxes/availability`): livre, já é sua e expirada (o botão vira "Reativar caixa"), já ativa ou de outro Membro. Opção Manter. Depois de criar, a página abre a Caixa nova.
+- **Caixa expirada:** "Reativar por 24 h" ou reativar e manter.
 - **Chaves de API** (`/chaves`): criar com nome (o segredo aparece uma vez, com o comando `claude mcp add` pronto), lista com prefixo, criação e último uso, e Revogar com confirmação.
 - Sessão que acaba ou Membro tirado da lista no meio do uso levam para `/entrar` ou "Seu acesso foi encerrado".
-- Tema claro e escuro, pelo sistema. As fontes (IBM Plex Sans e JetBrains Mono) vêm do `next/font` e são servidas pelo próprio app, então o build precisa de internet.
+- Tema claro e escuro, pelo sistema. As fontes (Bricolage Grotesque nos títulos, Figtree no texto e JetBrains Mono) vêm do `next/font`; as ilustrações dos mascotes ficam em `public/mascotes/`. Elas são servidas pelo próprio app, então o build precisa de internet.
 
 ## Deploy (Coolify)
 

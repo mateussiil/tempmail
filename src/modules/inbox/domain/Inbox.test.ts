@@ -7,7 +7,7 @@ const t0 = new Date("2026-11-05T12:00:00Z");
 const hours = (n: number) => new Date(t0.getTime() + n * 3_600_000);
 
 function open() {
-  return Inbox.open({ id: "i1", address: "teste", ownerId: "ana", now: t0, policy });
+  return Inbox.open({ id: "i1", address: "teste", ownerId: "ana", now: t0, policy, mascot: "hermes" });
 }
 
 describe("Inbox", () => {

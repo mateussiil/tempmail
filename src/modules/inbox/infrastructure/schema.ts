@@ -13,6 +13,8 @@ export const inbox = pgTable(
       .references(() => user.id, { onDelete: "restrict" }),
     // Nulo = mantida (sem prazo). No passado = expirada.
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    // O mascote escolhido (ver Mascot.ts); nulo nas Caixas de antes da escolha.
+    mascot: text("mascot"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

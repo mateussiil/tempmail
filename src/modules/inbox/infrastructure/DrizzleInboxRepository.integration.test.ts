@@ -11,6 +11,7 @@ import { runMigrations } from "@/shared/db/migrate";
 import * as schema from "@/shared/db/schema";
 import { InboxAddressConflictError } from "../application/InboxRepository";
 import { Inbox } from "../domain/Inbox";
+import { defaultMascotFor } from "../domain/Mascot";
 import { DrizzleInboxRepository } from "./DrizzleInboxRepository";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -110,5 +111,20 @@ describe.skipIf(!url)("DrizzleInboxRepository (Postgres real)", () => {
     const saved = await repository.findById("i1");
     expect(saved?.expiresAt).toEqual(hours(48));
     expect(saved).toMatchObject({ address: "teste", ownerId: "ana", createdAt: t0 });
+  });
+
+  it("grava o mascote escolhido, troca e mantém ao mudar o prazo; sem escolha, vale o do endereço", async () => {
+    await repository.insert(new Inbox("m1", "com-mascote", "ana", hours(24), t0, "polvo"));
+    await repository.insert(inbox("m2", "sem-mascote", "ana", hours(24)));
+
+    expect((await repository.findById("m1"))?.mascot).toBe("polvo");
+    const legacy = await repository.findById("m2");
+    expect(legacy?.mascotChoice).toBeNull();
+    expect(legacy?.mascot).toBe(defaultMascotFor("sem-mascote"));
+
+    const changed = (await repository.findById("m1"))!.withMascot("baleia");
+    await repository.save(changed);
+    await repository.save(changed.expire(hours(1)));
+    expect((await repository.findById("m1"))?.mascot).toBe("baleia");
   });
 });

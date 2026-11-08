@@ -1,4 +1,5 @@
 import type { Inbox } from "../domain/Inbox";
+import type { MascotId } from "../domain/Mascot";
 
 /** O que sai dos casos de uso: dados simples, prontos para JSON. */
 export type InboxView = {
@@ -13,6 +14,8 @@ export type InboxView = {
   /** `null` quando mantida. */
   expiresAt: string | null;
   createdAt: string;
+  /** O mensageiro da Caixa (ver `Mascot.ts`). */
+  mascot: MascotId;
 };
 
 export function toInboxView(inbox: Inbox, now: Date, mailDomain: string): InboxView {
@@ -24,5 +27,6 @@ export function toInboxView(inbox: Inbox, now: Date, mailDomain: string): InboxV
     kept: inbox.isKept(now),
     expiresAt: inbox.expiresAt ? inbox.expiresAt.toISOString() : null,
     createdAt: inbox.createdAt.toISOString(),
+    mascot: inbox.mascot,
   };
 }

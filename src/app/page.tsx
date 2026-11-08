@@ -1,9 +1,10 @@
 import { connection } from "next/server";
-import { InboxWorkspaceEntry } from "@/app/_components/InboxWorkspaceEntry";
+import { InboxesHomeEntry } from "@/app/_components/InboxesHomeEntry";
 import { SignOutButton } from "@/app/_components/SignOutButton";
 import { requireMember } from "@/composition/membership";
+import { shellData } from "@/composition/shell";
 import { mailDomain, missingAuthEnv, positiveIntEnv } from "@/shared/config/env";
-import { AppHeader } from "@/modules/membership/ui/AppHeader";
+import { AppShell } from "@/modules/membership/ui/AppShell";
 import { NotConfiguredPage } from "@/modules/membership/ui/NotConfiguredPage";
 
 export default async function Page() {
@@ -13,12 +14,11 @@ export default async function Page() {
   const missing = missingAuthEnv();
   if (missing.length > 0) return <NotConfiguredPage missing={missing} />;
 
-  const member = await requireMember();
+  const shell = await shellData(await requireMember());
 
   return (
-    <div className="app">
-      <AppHeader githubUsername={member.githubUsername} current="inboxes" actions={<SignOutButton />} />
-      <InboxWorkspaceEntry mailDomain={mailDomain()} ttlHours={positiveIntEnv("INBOX_TTL_HOURS", 24)} />
-    </div>
+    <AppShell {...shell} current="inboxes" signOut={<SignOutButton />}>
+      <InboxesHomeEntry mailDomain={mailDomain()} ttlHours={positiveIntEnv("INBOX_TTL_HOURS", 24)} />
+    </AppShell>
   );
 }

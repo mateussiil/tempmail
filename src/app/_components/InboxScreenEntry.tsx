@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { composeBrowserGateways, leaveEndedSession } from "@/composition/browser";
-import { InboxWorkspace } from "@/modules/inbox/ui/InboxWorkspace";
+import { InboxScreen } from "@/modules/inbox/ui/InboxScreen";
 
-/** Liga a tela de Caixas aos gateways HTTP (no navegador). */
-export function InboxWorkspaceEntry({ mailDomain, ttlHours }: { mailDomain: string; ttlHours: number }) {
+/** Liga a tela de uma Caixa aos gateways HTTP. */
+export function InboxScreenEntry({ inboxId, ttlHours }: { inboxId: string; ttlHours: number }) {
   const [gateways] = useState(() => composeBrowserGateways());
   return (
-    <InboxWorkspace
+    <InboxScreen
+      inboxId={inboxId}
       inboxes={gateways.inboxes}
       messages={gateways.messages}
-      mailDomain={mailDomain}
       ttlHours={ttlHours}
+      homeHref="/"
       onSessionEnded={leaveEndedSession}
     />
   );
