@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { HermesFlying } from "./HermesFlying";
 
 type AppShellProps = {
   githubUsername: string;
@@ -73,8 +74,7 @@ export function AppShell({ githubUsername, current, activeInboxes, signOut, chil
           {signOut}
         </div>
 
-        {/* eslint-disable-next-line @next/next/no-img-element -- ilustração local e decorativa. */}
-        <img className="side-hermes" src="/mascotes/hermes-grande.webp" alt="" width={400} height={464} />
+        <HermesFlying className="side-hermes" />
       </aside>
 
       <div className="shell-main">{children}</div>
