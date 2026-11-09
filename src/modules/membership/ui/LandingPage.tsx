@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { MASCOTS } from "@/modules/inbox/domain/Mascot";
 import { MascotAvatar } from "@/modules/inbox/ui/MascotAvatar";
 import { BrandMark } from "./AppShell";
+import { HermesWhistle } from "./HermesWhistle";
 
 type LandingPageProps = {
   mailDomain: string;
@@ -47,8 +48,7 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
           </div>
 
           <figure className="landing-demo" aria-label="Exemplo: um código de verificação chegando numa caixa">
-            {/* eslint-disable-next-line @next/next/no-img-element -- ilustração local, sem otimização. */}
-            <img className="landing-hermes" src="/mascotes/hermes-grande.webp" alt="" width={400} height={464} />
+            <HermesWhistle />
             <div className="demo-card">
               <div className="demo-address">
                 <MascotAvatar mascot="hermes" size="sm" decorative />

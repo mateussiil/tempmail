@@ -32,6 +32,12 @@ describe("LandingPage", () => {
     expect(screen.getByLabelText("Exemplo de uso com o Claude Code")).toHaveTextContent("https://tempmail.exemplo.test/api/mcp");
   });
 
+  it("deixa ouvir o Hermes passar, sem tocar nada sozinho", () => {
+    renderLanding();
+
+    expect(screen.getByRole("button", { name: "Ouvir o Hermes passar assobiando" })).toBeInTheDocument();
+  });
+
   it("mostra a turma inteira de mensageiros", () => {
     renderLanding();
 
