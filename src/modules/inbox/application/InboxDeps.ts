@@ -1,5 +1,6 @@
 import type { Inbox } from "../domain/Inbox";
 import type { InboxPolicy } from "../domain/InboxPolicy";
+import type { MascotId } from "../domain/Mascot";
 import type { InboxContents } from "./InboxContents";
 import type { InboxError } from "./InboxError";
 import type { InboxRepository } from "./InboxRepository";
@@ -14,6 +15,8 @@ export type InboxDeps = {
   newId: () => string;
   /** Gera um endereço aleatório (só a parte antes do `@`). */
   randomAddress: () => string;
+  /** Sorteia o mascote de uma Caixa criada sem escolha. */
+  randomMascot: () => MascotId;
   /** Esvazia a Caixa ao reativar (as Mensagens são de outro módulo). */
   contents: InboxContents;
 };

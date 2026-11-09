@@ -56,6 +56,7 @@ describe("CreateInboxUseCase", () => {
           kept: false,
           expiresAt: "2026-11-06T12:00:00.000Z",
           createdAt: "2026-11-05T12:00:00.000Z",
+          mascot: "corvo",
         },
       },
     });
@@ -236,6 +237,7 @@ describe("CreateInboxUseCase", () => {
         ownerId,
         now: new Date("2026-11-05T12:00:00Z"),
         policy: setup().deps.policy,
+        mascot: "baleia",
       });
 
     it("perde para outro Membro: address_taken", async () => {

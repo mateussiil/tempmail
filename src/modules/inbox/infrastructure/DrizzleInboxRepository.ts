@@ -1,13 +1,21 @@
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/shared/db/client";
 import { Inbox } from "../domain/Inbox";
+import { isMascotId } from "../domain/Mascot";
 import { InboxAddressConflictError, type InboxRepository } from "../application/InboxRepository";
 import { inbox } from "./schema";
 
 type Row = typeof inbox.$inferSelect;
 
 function toDomain(row: Row): Inbox {
-  return new Inbox(row.id, row.address, row.ownerId, row.expiresAt, row.createdAt);
+  return new Inbox(
+    row.id,
+    row.address,
+    row.ownerId,
+    row.expiresAt,
+    row.createdAt,
+    isMascotId(row.mascot) ? row.mascot : null,
+  );
 }
 
 /** O Drizzle embrulha o erro do `pg`; o código e o nome da constraint ficam em `cause`. */
@@ -61,6 +69,7 @@ export class DrizzleInboxRepository implements InboxRepository {
         ownerId: entity.ownerId,
         expiresAt: entity.expiresAt,
         createdAt: entity.createdAt,
+        mascot: entity.mascotChoice,
       });
     } catch (error) {
       if (isAddressConflict(error)) throw new InboxAddressConflictError(entity.address);
@@ -71,7 +80,7 @@ export class DrizzleInboxRepository implements InboxRepository {
   async save(entity: Inbox): Promise<void> {
     await this.db
       .update(inbox)
-      .set({ expiresAt: entity.expiresAt, updatedAt: new Date() })
+      .set({ expiresAt: entity.expiresAt, mascot: entity.mascotChoice, updatedAt: new Date() })
       .where(eq(inbox.id, entity.id));
   }
 }

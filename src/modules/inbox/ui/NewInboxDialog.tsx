@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { AddressAvailability } from "../application/CheckAddressUseCase";
 import { ADDRESS_MAX_LENGTH, ADDRESS_MIN_LENGTH, parseInboxAddress } from "../domain/InboxAddress";
+import { MASCOT_IDS, type MascotId } from "../domain/Mascot";
+import { MascotPicker } from "./MascotPicker";
 
 type Status =
   | { kind: "empty" }
@@ -14,7 +16,7 @@ type Status =
   | { kind: "taken" }
   | { kind: "unknown" };
 
-export type NewInboxRequest = { address?: string; keep: boolean };
+export type NewInboxRequest = { address?: string; keep: boolean; mascot: MascotId };
 
 type NewInboxDialogProps = {
   mailDomain: string;
@@ -26,6 +28,8 @@ type NewInboxDialogProps = {
   onClose: () => void;
   /** Espera antes de consultar o servidor enquanto a pessoa digita. */
   debounceMs?: number;
+  /** O mascote que já vem escolhido (sorteado, se não vier). */
+  initialMascot?: MascotId;
 };
 
 const HINTS: Record<Status["kind"], string> = {
@@ -65,12 +69,16 @@ export function NewInboxDialog({
   onCreate,
   onClose,
   debounceMs = 300,
+  initialMascot,
 }: NewInboxDialogProps) {
   const titleId = useId();
   const hintId = useId();
   const [mode, setMode] = useState<"random" | "chosen">("random");
   const [name, setName] = useState("");
   const [keep, setKeep] = useState(false);
+  const [mascot, setMascot] = useState<MascotId>(
+    () => initialMascot ?? MASCOT_IDS[Math.floor(Math.random() * MASCOT_IDS.length)],
+  );
   /** A resposta do servidor, guardada junto do nome que ela responde. */
   const [remote, setRemote] = useState<{ address: string; status: Status } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -133,7 +141,9 @@ export function NewInboxDialog({
     if (blocked || submitting) return;
     setSubmitting(true);
     setError(null);
-    const failure = await onCreate(mode === "chosen" ? { address: name.trim().toLowerCase(), keep } : { keep });
+    const failure = await onCreate(
+      mode === "chosen" ? { address: name.trim().toLowerCase(), keep, mascot } : { keep, mascot },
+    );
     setSubmitting(false);
     if (failure) setError(failure);
   }
@@ -195,6 +205,11 @@ export function NewInboxDialog({
             </p>
           </div>
         )}
+
+        <div className="field">
+          <span className="muted small">Mensageiro</span>
+          <MascotPicker value={mascot} onChange={setMascot} />
+        </div>
 
         <div className="field">
           <span className="muted small">Duração</span>

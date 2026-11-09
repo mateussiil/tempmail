@@ -36,6 +36,13 @@
       "when": 1793923924487,
       "tag": "0004_oauth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794178293777,
+      "tag": "0005_inbox_mascot",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,7 @@ export function makeInboxDeps(options: { max?: number; repository?: FakeInboxRep
     clock: () => now,
     newId: () => `id-${++ids}`,
     randomAddress: () => `aleatoria${++randoms}`,
+    randomMascot: () => "corvo",
     contents,
   };
 

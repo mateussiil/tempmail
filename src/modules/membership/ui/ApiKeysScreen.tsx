@@ -73,9 +73,9 @@ export function ApiKeysScreen({ gateway, mcpUrl, onSessionEnded, clock = () => n
   }
 
   return (
-    <main className="page">
-      <div className="page-head">
-        <h1>Chaves de API</h1>
+    <main className="panel">
+      <div className="panel-head">
+        <h1 className="panel-title">Chaves de API</h1>
         {!creating ? (
           <button type="button" className="button" onClick={() => setCreating(true)}>
             Nova chave

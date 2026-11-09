@@ -1,4 +1,5 @@
 import type { InboxPolicy } from "./InboxPolicy";
+import { defaultMascotFor, type MascotId } from "./Mascot";
 
 export class InboxStateError extends Error {
   constructor(message: string) {
@@ -26,7 +27,14 @@ export class Inbox {
     readonly ownerId: string,
     readonly expiresAt: Date | null,
     readonly createdAt: Date,
+    /** O mascote escolhido; `null` nas Caixas de antes da escolha (vale o do endereço). */
+    readonly mascotChoice: MascotId | null = null,
   ) {}
+
+  /** O mascote que aparece: o escolhido ou, sem escolha, o que sai do endereço. */
+  get mascot(): MascotId {
+    return this.mascotChoice ?? defaultMascotFor(this.address);
+  }
 
   static open(args: {
     id: string;
@@ -34,9 +42,10 @@ export class Inbox {
     ownerId: string;
     now: Date;
     policy: InboxPolicy;
+    mascot: MascotId;
   }): Inbox {
-    const { id, address, ownerId, now, policy } = args;
-    return new Inbox(id, address, ownerId, policy.expiryFrom(now), now);
+    const { id, address, ownerId, now, policy, mascot } = args;
+    return new Inbox(id, address, ownerId, policy.expiryFrom(now), now, mascot);
   }
 
   isOwnedBy(memberId: string): boolean {
@@ -83,7 +92,12 @@ export class Inbox {
     }
   }
 
+  /** Troca o mascote; vale em qualquer estado. */
+  withMascot(mascot: MascotId): Inbox {
+    return new Inbox(this.id, this.address, this.ownerId, this.expiresAt, this.createdAt, mascot);
+  }
+
   private withExpiry(expiresAt: Date | null): Inbox {
-    return new Inbox(this.id, this.address, this.ownerId, expiresAt, this.createdAt);
+    return new Inbox(this.id, this.address, this.ownerId, expiresAt, this.createdAt, this.mascotChoice);
   }
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { CreateInboxUseCase } from "@/modules/inbox/application/CreateInboxUseCase";
 import type { DeleteInboxUseCase } from "@/modules/inbox/application/DeleteInboxUseCase";
 import { describeInboxError } from "@/modules/inbox/application/InboxError";
+import { MASCOT_IDS, type MascotId } from "@/modules/inbox/domain/Mascot";
 import type { ListInboxesUseCase } from "@/modules/inbox/application/ListInboxesUseCase";
 import type { SetInboxKeptUseCase } from "@/modules/inbox/application/SetInboxKeptUseCase";
 import type { GetMessageUseCase } from "@/modules/message/application/GetMessageUseCase";
@@ -86,11 +87,15 @@ export function registerTempmailTools(server: McpServer, deps: McpToolDeps): voi
           .string()
           .optional()
           .describe("Parte antes do @: 3 a 40 letras, números, ponto ou hífen. Omita para um aleatório."),
+        mascot: z
+          .enum(MASCOT_IDS as [MascotId, ...MascotId[]])
+          .optional()
+          .describe("O mascote da Caixa na página (hermes, corvo, pomba…). Omita para sortear."),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
-    authenticated(async ({ address }, ownerId) => {
-      const result = await deps.createInbox.execute({ ownerId, address });
+    authenticated(async ({ address, mascot }, ownerId) => {
+      const result = await deps.createInbox.execute({ ownerId, address, mascot });
       if (!result.ok) {
         return failure(result.error.code, describeInboxError(result.error), {
           ...(result.error.code === "limit_reached" ? { max: result.error.max } : {}),
