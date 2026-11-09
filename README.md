@@ -230,7 +230,7 @@ A limpeza roda sob um **lock do Postgres** (`pg_try_advisory_lock`): duas execu�
 
 ## Página
 
-Em `https://tempmail.mateussiil.com.br`, depois de entrar com o GitHub. Segue o [protótipo aprovado](https://github.com/mateussiil/tempmail/issues/7).
+Em `https://tempmail.mateussiil.com.br`. Quem ainda não entrou vê em `/` a **apresentação** do produto (o que faz, como funciona, API e MCP, os mascotes e as regras, com o domínio, o prazo e o limite vindos das variáveis de ambiente) e o botão "Entrar com GitHub"; o acesso continua só para a lista do time. `/entrar` segue existindo para os erros de login e para o pedido OAuth do claude.ai. Depois de entrar: Segue o [protótipo aprovado](https://github.com/mateussiil/tempmail/issues/7).
 
 - **Suas caixas** (`/`): a lista, cada Caixa com o seu mascote, o prazo e um menu "…" (Copiar endereço, Manter, Reativar, Trocar mascote, Apagar com confirmação). Expiradas aparecem esmaecidas, com "Reativar" à mão. Navegação lateral (Caixas, com o número de ativas, e Chaves de API); no celular ela vira uma barra no topo.
 - **Caixa** (`/caixas/{id}`): mascote (clicar troca), endereço, prazo e as ações; no computador, as Mensagens e a leitura lado a lado; no celular, uma de cada vez, com "‹ Mensagens". Abre sozinha a Mensagem mais recente. A lista e a Caixa atualizam por **polling a cada 5 s** (pausa com a aba escondida) e avisam quando estão sem conexão.
