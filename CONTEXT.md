@@ -1,6 +1,6 @@
 # Tempmail
 
-Caixas de email temporárias para uso pessoal e do time, acessíveis pela página, pela API e pelo MCP.
+Caixas de email temporárias de fácil acesso para IA: agentes criam, esperam e leem Mensagens pelo MCP e pela API; a página serve às pessoas do time. Cadastro, login e testes são usos, não o centro.
 
 ## Language
 
