@@ -570,6 +570,23 @@ code {
   fill: #f6b73c;
 }
 
+.hermes-cap-band {
+  stroke: #e8962a;
+}
+
+.hermes-shine {
+  stroke: #ffffff;
+  opacity: 0.75;
+}
+
+.hermes-cheek {
+  fill: #ffb7a0;
+}
+
+.hermes-seal {
+  fill: #f26a1b;
+}
+
 .hermes-trail-warm {
   stroke: var(--orange);
 }
@@ -580,7 +597,7 @@ code {
 
 .hermes-wing {
   transform-box: fill-box;
-  transform-origin: 85% 95%;
+  transform-origin: 95% 95%;
 }
 
 .shell-main {
