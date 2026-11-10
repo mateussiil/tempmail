@@ -10,7 +10,7 @@ const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "600"], variab
 
 export const metadata: Metadata = {
   title: "tempmail",
-  description: "Emails temporários para o time",
+  description: "Email temporário de fácil acesso para IA, pelo MCP e pela API",
 };
 
 export const viewport: Viewport = {

@@ -16,6 +16,8 @@ type LandingPageProps = {
 
 /**
  * A página de quem ainda não entrou: o que o tempmail faz e a porta de entrada.
+ * A proposta é email temporário de fácil acesso para IA; cadastro, login e
+ * testes são usos disso, não o centro.
  * O acesso continua só para quem está na lista do time.
  */
 export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, signInButton }: LandingPageProps) {
@@ -33,13 +35,14 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
         <section className="landing-hero" aria-labelledby="landing-title">
           <div className="landing-hero-text">
             <h1 id="landing-title" className="landing-title">
-              <span className="landing-title-line">Um email na hora.</span>
+              <span className="landing-title-line">Email temporário</span>
               <br />
-              <span className="landing-title-accent">O código, em destaque.</span>
+              <span className="landing-title-accent">para a sua IA.</span>
             </h1>
             <p className="landing-lede">
-              Caixas temporárias em <span className="mono">@{mailDomain}</span> para testar cadastro, login e
-              redefinição de senha, pela página, pela API ou pelo seu agente via MCP.
+              Seu agente cria uma caixa em <span className="mono">@{mailDomain}</span>, espera o email chegar e
+              lê o que precisa, sozinho, pelo MCP ou pela API. Sem emprestar o seu email e sem copiar código de
+              um lado para o outro.
             </p>
             <div className="landing-cta">
               {signInButton}
@@ -47,7 +50,7 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
             </div>
           </div>
 
-          <figure className="landing-demo" aria-label="Exemplo: um código de verificação chegando numa caixa">
+          <figure className="landing-demo" aria-label="Exemplo: um código de verificação chegando na caixa do agente">
             <HermesWhistle />
             <div className="demo-card">
               <div className="demo-address">
@@ -74,20 +77,28 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
 
         <section className="landing-section" aria-labelledby="como-funciona">
           <h2 id="como-funciona" className="landing-h2">
-            Como funciona
+            Como o agente usa
           </h2>
           <ol className="landing-steps">
             <li>
-              <strong>Crie uma caixa</strong>
-              <span>Com nome escolhido, como <span className="mono">teste-pix</span>, ou aleatório.</span>
+              <strong>Conecte uma vez</strong>
+              <span>
+                O claude.ai entra por OAuth. Claude Code, Codex, Cursor e outros clientes MCP usam uma Chave de API.
+              </span>
             </li>
             <li>
-              <strong>Use o endereço</strong>
-              <span>No cadastro, no login ou no fluxo que você está testando.</span>
+              <strong>Ele cria a caixa</strong>
+              <span>
+                <span className="mono">create_inbox</span> devolve um endereço na hora, com nome escolhido ou
+                aleatório.
+              </span>
             </li>
             <li>
-              <strong>Copie o código</strong>
-              <span>O email aparece em segundos, com o código de verificação separado do resto.</span>
+              <strong>Ele espera e lê</strong>
+              <span>
+                <span className="mono">wait_for_email</span> segura até o email chegar, e{" "}
+                <span className="mono">extract_code</span> separa o código do resto.
+              </span>
             </li>
           </ol>
         </section>
@@ -95,15 +106,15 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
         <section className="landing-section landing-agents" aria-labelledby="para-agentes">
           <div>
             <h2 id="para-agentes" className="landing-h2">
-              Para scripts e agentes
+              Conecte em um minuto
             </h2>
             <p>
-              Tudo o que a página faz também está na API REST e no servidor MCP. Um agente cria a caixa, faz o
-              cadastro e espera o código sozinho, sem você copiar nada.
+              Um comando e o seu agente ganha as ferramentas de email. Ele cria a caixa, usa o endereço e espera a
+              resposta sem você no meio.
             </p>
             <p className="muted small">
-              Cada pessoa cria as suas Chaves de API depois de entrar. Claude Code, Codex, Cursor e outros clientes
-              MCP têm o passo a passo pronto. O claude.ai conecta por OAuth.
+              Cada pessoa cria as suas Chaves de API depois de entrar, com o passo a passo de cada cliente. Tudo o que
+              o MCP faz também está na API REST, para scripts e testes.
             </p>
           </div>
           <pre className="landing-code" aria-label="Exemplo de uso com o Claude Code">
@@ -120,6 +131,27 @@ export function LandingPage({ mailDomain, ttlHours, maxActiveInboxes, mcpUrl, si
               {"\n"}extract_code    → <span className="code-accent">482913</span>
             </code>
           </pre>
+        </section>
+
+        <section className="landing-section" aria-labelledby="usos">
+          <h2 id="usos" className="landing-h2">
+            Para que a IA usa
+          </h2>
+          <dl className="landing-rules">
+            <div>
+              <dt>Cadastros e logins</dt>
+              <dd>O agente se cadastra num serviço e confirma o código ou o link de acesso sem pedir ajuda.</dd>
+            </div>
+            <div>
+              <dt>Testes ponta a ponta</dt>
+              <dd>Cada execução ganha um endereço novo. O teste espera o email e segue o fluxo.</dd>
+            </div>
+            <div>
+              <dt>Qualquer fluxo com email</dt>
+              <dd>Convites, confirmações, recibos e anexos: o agente recebe e lê o conteúdo.</dd>
+            </div>
+          </dl>
+          <p className="muted small">E quando for você, a página mostra as mesmas caixas, com o código em destaque.</p>
         </section>
 
         <section className="landing-section" aria-labelledby="mensageiros">

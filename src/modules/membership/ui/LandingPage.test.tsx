@@ -18,7 +18,7 @@ describe("LandingPage", () => {
   it("apresenta o produto e oferece entrar no topo, no início e no fim", () => {
     renderLanding();
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Um email na hora.O código, em destaque.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Email temporáriopara a sua IA.");
     expect(screen.getAllByRole("button", { name: "Entrar com GitHub" })).toHaveLength(3);
     expect(screen.getByText(/está na lista, peça a quem administra/)).toBeInTheDocument();
   });
@@ -30,6 +30,15 @@ describe("LandingPage", () => {
     expect(screen.getByText("24 h de prazo")).toBeInTheDocument();
     expect(screen.getByText("Até 20 caixas ativas")).toBeInTheDocument();
     expect(screen.getByLabelText("Exemplo de uso com o Claude Code")).toHaveTextContent("https://tempmail.exemplo.test/api/mcp");
+  });
+
+  it("põe o agente no centro e trata cadastro, login e testes como usos", () => {
+    renderLanding();
+
+    expect(screen.getByRole("heading", { name: "Como o agente usa" })).toBeInTheDocument();
+    const usos = screen.getByRole("heading", { name: "Para que a IA usa" }).closest("section")!;
+    expect(within(usos).getByText("Cadastros e logins")).toBeInTheDocument();
+    expect(within(usos).getByText("Testes ponta a ponta")).toBeInTheDocument();
   });
 
   it("deixa ouvir o Hermes passar, sem tocar nada sozinho", () => {

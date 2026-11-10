@@ -1,6 +1,6 @@
 # Tempmail
 
-Email temporário para uso pessoal e do time: recebe emails catch-all em `tmp.mateussiil.com.br`, com página web, API REST e servidor MCP remoto.
+Email temporário de fácil acesso para IA: um agente cria uma caixa em `tmp.mateussiil.com.br`, espera o email chegar e lê o conteúdo sozinho, pelo servidor MCP remoto ou pela API REST. Cadastro, login e testes ponta a ponta são usos disso. A página web mostra as mesmas caixas para as pessoas do time.
 
 O planejamento está no mapa: [[Mapa] Tempmail: email temporário com página, API e MCP](https://github.com/mateussiil/tempmail/issues/1). A linguagem do domínio está em [`CONTEXT.md`](./CONTEXT.md).
 
