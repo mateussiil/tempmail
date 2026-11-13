@@ -60,11 +60,19 @@ export function isAllowedClientIdUrl(clientIdUrl: string, hosts: string[]): bool
   }
 }
 
+/**
+ * Código do erro quando o usuário do GitHub não está na lista. Com `code`, o
+ * Better Auth redireciona o callback para a página de erro (`/entrar?error=…`)
+ * em vez de mostrar o JSON cru.
+ */
+export const NOT_ON_ALLOWLIST_CODE = "NOT_ON_ALLOWLIST";
+
 /** Recusa a criação do Membro se o username do GitHub não está na lista. */
 export function assertAllowedToJoin(githubUsername: unknown, allowlist: Allowlist): void {
   if (typeof githubUsername !== "string" || !allowlist.allows(githubUsername)) {
     throw new APIError("FORBIDDEN", {
       message: "Este usuário do GitHub não está na lista do time.",
+      code: NOT_ON_ALLOWLIST_CODE,
     });
   }
 }

@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { SignInWithGithubButton } from "@/app/_components/SignInWithGithubButton";
 import { composeGetCurrentMember } from "@/composition/membership";
-import { missingAuthEnv } from "@/shared/config/env";
+import { NOT_ON_ALLOWLIST_CODE } from "@/modules/membership/infrastructure/auth";
+import { accessRequestEmail, missingAuthEnv } from "@/shared/config/env";
+import { AccessDeniedPage } from "@/modules/membership/ui/AccessDeniedPage";
 import { NotConfiguredPage } from "@/modules/membership/ui/NotConfiguredPage";
 import { SignInPage } from "@/modules/membership/ui/SignInPage";
 
@@ -28,6 +30,10 @@ export default async function Page({
   const current = await composeGetCurrentMember().execute();
   if (current.status === "member" && !oauthRequest) redirect("/");
   if (current.status === "revoked") redirect("/acesso-encerrado");
+
+  if (error === NOT_ON_ALLOWLIST_CODE) {
+    return <AccessDeniedPage requestEmail={accessRequestEmail()} />;
+  }
 
   return (
     <SignInPage
