@@ -24,6 +24,8 @@ type InboxScreenProps = {
   ttlHours: number;
   homeHref: string;
   onSessionEnded: (reason: "anonymous" | "revoked") => void;
+  /** Abre já nesta Mensagem (o link `?mensagem=` que o MCP devolve). */
+  initialMessageId?: string;
   pollMs?: number;
   clock?: () => Date;
 };
@@ -39,6 +41,7 @@ export function InboxScreen({
   ttlHours,
   homeHref,
   onSessionEnded,
+  initialMessageId,
   pollMs = 5000,
   clock = () => new Date(),
 }: InboxScreenProps) {
@@ -46,9 +49,9 @@ export function InboxScreen({
   /** `undefined` carregando; `null` não existe (ou é de outro Membro). */
   const [inbox, setInbox] = useState<InboxView | null | undefined>(undefined);
   const [loaded, setLoaded] = useState<MessageSummaryView[] | null>(null);
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(initialMessageId ?? null);
   const [message, setMessage] = useState<MessageDetailView | null>(null);
-  const [pane, setPane] = useState<Pane>("messages");
+  const [pane, setPane] = useState<Pane>(initialMessageId ? "reader" : "messages");
   const [busy, setBusy] = useState(false);
   const [offline, setOffline] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
