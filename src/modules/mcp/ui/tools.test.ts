@@ -40,6 +40,7 @@ function setup() {
   const directory = new InboxRepositoryDirectory(inbox.repository, inbox.deps.clock);
 
   const client = mcpTestClient({
+    webBaseUrl: "https://tempmail.exemplo.test/",
     createInbox: new CreateInboxUseCase(inbox.deps),
     listInboxes: new ListInboxesUseCase(inbox.deps),
     setInboxKept: new SetInboxKeptUseCase(inbox.deps),
@@ -80,6 +81,7 @@ describe("ferramentas MCP", () => {
       "keep_inbox",
       "list_inboxes",
       "list_messages",
+      "view_message",
       "wait_for_email",
     ]);
     const byName = Object.fromEntries(tools.map((t) => [t.name, t.annotations ?? {}]));
@@ -183,6 +185,40 @@ describe("ferramentas MCP", () => {
       content: "x".repeat(100),
       truncated: true,
     });
+  });
+
+  it("get_message e list_messages devolvem o webUrl da página formatada", async () => {
+    const s = setup();
+    const inbox = await s.createInbox();
+    const m = message(inbox.id, "e1", { textBody: "oi" });
+    await s.messages.insert(m);
+    const url = `https://tempmail.exemplo.test/caixas/${inbox.id}?mensagem=${m.id}`;
+
+    const got = await s.client.call("get_message", { message_id: m.id });
+    expect((got.result.structuredContent!.message as { webUrl: string }).webUrl).toBe(url);
+
+    const listed = await s.client.call("list_messages", { inbox_id: inbox.id });
+    expect((listed.result.structuredContent!.messages as { webUrl: string }[])[0].webUrl).toBe(url);
+  });
+
+  it("view_message liga a tela do MCP App e não manda o corpo ao modelo", async () => {
+    const s = setup();
+    const inbox = await s.createInbox();
+    const m = message(inbox.id, "e1", { textBody: "segredo-do-corpo", htmlBody: "<b>oi</b>" });
+    await s.messages.insert(m);
+
+    const tools = await s.client.send("tools/list", {});
+    const listed = await tools.text();
+    expect(listed).toContain("ui://tempmail/message.html");
+
+    const { result } = await s.client.call("view_message", { message_id: m.id });
+    expect(result.content[0].text).not.toContain("segredo-do-corpo");
+    expect(result.structuredContent!.message).toMatchObject({ html: "<b>oi</b>", text: "segredo-do-corpo" });
+
+    const res = await s.client.send("resources/read", { uri: "ui://tempmail/message.html" });
+    const raw = await res.text();
+    expect(raw).toContain("text/html;profile=mcp-app");
+    expect(raw).toContain("sandbox");
   });
 
   it("get_message converte o HTML em texto quando não há texto, e devolve o HTML se pedido", async () => {

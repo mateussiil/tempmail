@@ -7,7 +7,13 @@ import { missingAuthEnv, positiveIntEnv } from "@/shared/config/env";
 import { AppShell } from "@/modules/membership/ui/AppShell";
 import { NotConfiguredPage } from "@/modules/membership/ui/NotConfiguredPage";
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ mensagem?: string }>;
+}) {
   await connection();
 
   const missing = missingAuthEnv();
@@ -15,10 +21,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const shell = await shellData(await requireMember());
   const { id } = await params;
+  const { mensagem } = await searchParams;
 
   return (
     <AppShell {...shell} current="inboxes" signOut={<SignOutButton />}>
-      <InboxScreenEntry inboxId={id} ttlHours={positiveIntEnv("INBOX_TTL_HOURS", 24)} />
+      <InboxScreenEntry
+        inboxId={id}
+        ttlHours={positiveIntEnv("INBOX_TTL_HOURS", 24)}
+        initialMessageId={mensagem}
+      />
     </AppShell>
   );
 }
