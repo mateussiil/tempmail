@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { AccessDeniedPage } from "./AccessDeniedPage";
 import { AccessEndedPage } from "./AccessEndedPage";
 import { NotConfiguredPage } from "./NotConfiguredPage";
 import { SignInPage } from "./SignInPage";
@@ -44,5 +45,21 @@ describe("NotConfiguredPage", () => {
 
     expect(screen.getByText("GITHUB_CLIENT_ID")).toBeInTheDocument();
     expect(screen.getByText("BETTER_AUTH_SECRET")).toBeInTheDocument();
+  });
+});
+
+describe("AccessDeniedPage", () => {
+  it("oferece o pedido de acesso por email quando há um destinatário", () => {
+    render(<AccessDeniedPage requestEmail="admin@exemplo.com" />);
+
+    const link = screen.getByRole("link", { name: "Pedir acesso por email" });
+    expect(link.getAttribute("href")).toMatch(/^mailto:admin@exemplo\.com\?subject=/);
+  });
+
+  it("sem destinatário, só orienta a falar com quem administra", () => {
+    render(<AccessDeniedPage />);
+
+    expect(screen.queryByRole("link", { name: "Pedir acesso por email" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Fale com quem administra/)).toBeInTheDocument();
   });
 });

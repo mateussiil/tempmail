@@ -110,3 +110,8 @@ export function expirationIntervalMs(env: Record<string, string | undefined> = p
 export function shouldRunMigrations(): boolean {
   return process.env.RUN_MIGRATIONS !== "false";
 }
+
+/** Para onde vai o pedido de acesso de quem não está na lista (`ACCESS_REQUEST_EMAIL`); vazio = sem o botão. */
+export function accessRequestEmail(env: Record<string, string | undefined> = process.env): string | undefined {
+  return env.ACCESS_REQUEST_EMAIL?.trim() || undefined;
+}

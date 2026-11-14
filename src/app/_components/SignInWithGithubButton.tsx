@@ -12,7 +12,7 @@ export function SignInWithGithubButton() {
     const result = await authClient.signIn.social({
       provider: "github",
       callbackURL: "/",
-      errorCallbackURL: "/entrar?error=auth",
+      errorCallbackURL: "/entrar",
     });
     if (result?.error) setPending(false);
   }
