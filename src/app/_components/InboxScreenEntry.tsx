@@ -5,7 +5,15 @@ import { composeBrowserGateways, leaveEndedSession } from "@/composition/browser
 import { InboxScreen } from "@/modules/inbox/ui/InboxScreen";
 
 /** Liga a tela de uma Caixa aos gateways HTTP. */
-export function InboxScreenEntry({ inboxId, ttlHours }: { inboxId: string; ttlHours: number }) {
+export function InboxScreenEntry({
+  inboxId,
+  ttlHours,
+  initialMessageId,
+}: {
+  inboxId: string;
+  ttlHours: number;
+  initialMessageId?: string;
+}) {
   const [gateways] = useState(() => composeBrowserGateways());
   return (
     <InboxScreen
@@ -13,6 +21,7 @@ export function InboxScreenEntry({ inboxId, ttlHours }: { inboxId: string; ttlHo
       inboxes={gateways.inboxes}
       messages={gateways.messages}
       ttlHours={ttlHours}
+      initialMessageId={initialMessageId}
       homeHref="/"
       onSessionEnded={leaveEndedSession}
     />
